@@ -1,10 +1,10 @@
 import Sidebar from "../components/sidebar.tsx";
-import Search from "../components/search.tsx";
+import Search from "../components/searchbar.tsx";
 
 const Dashboard = () => {
     return (
         <div className="flex h-screen gap-4">
-            <aside className="border-r"> <Sidebar/> </aside>
+            <Sidebar/>
             <Search />
         </div>
     )

@@ -37,7 +37,7 @@ export interface VenuePerformance {
 }
 
 export interface Profile {
-    id: string;
-    name: string;
-    profile_image: string;
+    firstname: string;
+    lastname: string;
+    image?: string;
 }

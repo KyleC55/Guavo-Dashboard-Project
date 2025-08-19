@@ -41,3 +41,16 @@ export interface Profile {
     lastname: string;
     image?: string;
 }
+
+export interface AddBookings {
+    venue: string;
+    name: string;
+    company: string;
+    email: string;
+    phonenumber: string;
+    partysize: number;
+    date: string;
+    startTime: string;
+    endTime: string;
+    notes?: string;
+}

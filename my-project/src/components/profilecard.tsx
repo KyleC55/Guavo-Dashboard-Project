@@ -12,7 +12,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ profile }) => {
                 <img
                     src={profile.image}
                     alt={`${profile.firstname} ${profile.lastname}`}
-                    className="w-16 h-16 rounded-full object-cover"
+                    className="w-10 h-10 rounded-full object-cover"
                 />
             )}
             <div>

@@ -1,13 +1,12 @@
 
 const Search = () => {
     return (
-        <div className="p-6">
-            {/* search field + icon live in the SAME relative wrapper */}
+        <div className="p-4">
             <div className="relative w-[480px]">
                 <input
                     type="search"
                     placeholder="Search bookings, venues, users..."
-                    className="h-11 w-full pl-10 pr-4 rounded-lg border border-gray-300
+                    className="h-8 w-full pl-10 pr-4 rounded-lg border border-gray-300
                      bg-gray-50 text-gray-700 placeholder-gray-400
                      focus:outline-none focus:border-gray-500"
                 />

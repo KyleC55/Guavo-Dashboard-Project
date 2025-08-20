@@ -12,11 +12,11 @@ const Sidebar = () => {
     const navigate = useNavigate();
     return (
         <div className="font-sans font-bold">
-            <div className="p-5 border-b border-sidebar-border text-2xl flex">
+            <div className="p-4 border-b border-sidebar-border text-2xl flex">
                 Guavo Admin
             </div>
 
-            <ul className="p-6 space-y-2 text-l">
+            <ul className="p-4 space-y-2 text-l">
                 <li className="flex items-center gap-1 px-2 py-2 rounded cursor-pointer hover:bg-gray-200"
                     onClick={() => navigate("/Dashboard")}>
                     <MdOutlineDashboard size={23}/>

@@ -1,3 +1,5 @@
+import type {IconType} from "react-icons";
+
 export type BookingStatus = 'confirmed' | 'rejected' | 'pending';
 export type InquiryStatus = 'connecting' | 'negotiating' | 'confirmed' | 'canceled';
 export type Provider = 'Resy' | 'OpenTable' | 'Manual'
@@ -53,4 +55,11 @@ export interface AddBookings {
     startTime: string;
     endTime: string;
     notes?: string;
+}
+
+export interface BookingCard {
+    title: string;
+    value: number;
+    subtitle: string;
+    Icon?: IconType;
 }

@@ -17,8 +17,9 @@ import { FaRegClock } from "react-icons/fa";
 import { HiOutlineChat } from "react-icons/hi";
 import { CiCalendar } from "react-icons/ci";
 import { useNavigate } from "react-router-dom";
-import Modal from "../components/Modal";
+import Modal from "../components/modal";
 import ManualBookingForm from "../components/manualbookings.tsx";
+
 const Dashboard = () => {
     const navigate = useNavigate();
 
@@ -30,13 +31,11 @@ const Dashboard = () => {
             <div className="w-64 border-r">
                 <Sidebar />
             </div>
-
             <div className="flex-1 flex flex-col p-6">
                 <div className="flex gap-4">
                     <Search />
                     <ProfileCard profile={displayProfile[0]} />
                 </div>
-
                 <h1 className="text-black text-4xl font-bold mt-6 ml-2">Dashboard</h1>
                 <h2 className="text-gray-500 mt-2 ml-2 max-w-2xl">
                     Enterprise venue management overview across all locations
@@ -81,22 +80,19 @@ const Dashboard = () => {
                             icon={<CiCalendar />}
                             title="Add Manual Booking"
                             subtitle="Create a new reservation"
-                            onClick={() => setManualOpen(true)}
-                        />
+                            onClick={() => setManualOpen(true)}/>
 
                         <Quickactionbox
                             icon={<HiOutlineChat />}
                             title="Review Inquiries"
                             subtitle="156 pending requests"
-                            onClick={() => navigate("/inquiries")}
-                        />
+                            onClick={() => navigate("/inquiries")}/>
 
                         <Quickactionbox
                             icon={<FaRegClock />}
                             title="Check Availability"
                             subtitle="View and manage time slots"
-                            onClick={() => navigate("/availability")}
-                        />
+                            onClick={() => navigate("/availability")}/>
 
                         <Quickactionbox
                             icon={<MdOutlineDashboard />}
@@ -111,8 +107,7 @@ const Dashboard = () => {
             <Modal
                 open={manualOpen}
                 title="Add Manual Booking"
-                onClose={() => setManualOpen(false)}
-            >
+                onClose={() => setManualOpen(false)}>
                 <ManualBookingForm />
             </Modal>
         </div>

@@ -1,9 +1,11 @@
-// components/manualbookings.tsx
 import React, { useMemo, useState } from "react";
 import type { AddBookings } from "../../types/types";
+import type { BookingRow } from "../../types/types";
 
 type ManualBookingFormProps = {
-    onDone?: () => void; // 👈 declare the prop you’re passing
+    onCreate: (data: Omit<BookingRow, "id">) => void;
+    onDone?: () => void;
+    onCancel?: () => void;
 };
 
 function generateTimes(stepMinutes = 30, startHour = 8, endHour = 22) {

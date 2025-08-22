@@ -1,0 +1,40 @@
+import type { BookingRow } from "../../types/types.ts";
+
+export const mockBooking: BookingRow[] = [
+    {
+        id: "BK1959",
+        venue: "The Rooftop Los Angeles",
+        city: "Los Angeles",
+        booker: "User 1959",
+        company: "RetailCo",
+        role: "Marketing",
+        partysize: 7,
+        date: "2025-10-17T21:00:00Z",
+        status: "confirmed",
+        source: "Resy",
+    },
+    {
+        id: "BK1823",
+        venue: "Skyline Lounge San Francisco",
+        city: "San Francisco",
+        booker: "User 1823",
+        company: "MediaCorp",
+        role: "Operations",
+        partysize: 4,
+        date: "2025-10-17T21:00:00Z",
+        status: "confirmed",
+        source: "Manual",
+    },
+    {
+        id: "BK1745",
+        venue: "City Views Miami",
+        city: "Miami",
+        booker: "User 1745",
+        company: "StartupInc",
+        role: "HR",
+        partysize: 3,
+        date: "2025-10-17T21:00:00Z",
+        status: "confirmed",
+        source: "OpenTable",
+    },
+];

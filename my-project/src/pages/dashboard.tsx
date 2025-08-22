@@ -23,7 +23,6 @@ import ManualBookingForm from "../components/manualbookings.tsx";
 const Dashboard = () => {
     const navigate = useNavigate();
 
-    // NEW: modal open/close state
     const [manualOpen, setManualOpen] = useState(false);
 
     return (
@@ -107,6 +106,7 @@ const Dashboard = () => {
             <Modal
                 open={manualOpen}
                 title="Add Manual Booking"
+                showCloseButton={false}
                 onClose={() => setManualOpen(false)}>
                 <ManualBookingForm />
             </Modal>

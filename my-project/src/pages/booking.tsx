@@ -9,9 +9,27 @@ import Modal from "../components/modal.tsx";
 import ManualBookingForm from "../components/manualbookings.tsx";
 import { useState } from "react";
 import AddManualBookingButton from "../components/manualbookingadd.tsx";
+import BookingsTable from "../components/bookingrows.tsx";
+import { mockBooking } from "../data/mockbookings.ts";
+import type { BookingRow } from "../../types/types.ts";
 
 const Bookings = () => {
     const [manualOpen, setManualOpen] = useState(false);
+
+    const [rows, setRows] = useState<BookingRow[]>(mockBooking);
+
+    const genBookingId = (list: BookingRow[]) => {
+        const max = Math.max(0, ...list.map(r => parseInt(r.id.replace(/\D/g, "") || "0", 10)));
+        return `BK${String(max + 1).padStart(4, "0")}`;
+    };
+
+    const handleDelete = (id: string) =>
+        setRows(prev => prev.filter(r => r.id !== id));
+
+    const handleCreate = (data: Omit<BookingRow,"id">) => {
+        setRows(prev => [{ id: genBookingId(prev), ...data }, ...prev]);
+        setManualOpen(false);
+    };
 
     return (
         <div className="flex min-h-screen">
@@ -30,9 +48,7 @@ const Bookings = () => {
                 <div className="mt-6 flex items-end">
                     <div className="ml-2">
                         <h1 className="text-black text-4xl font-bold">Bookings Management</h1>
-                        <p className="text-gray-500 mt-2 max-w-2xl">
-                            Managing 2,000 bookings across all venues
-                        </p>
+                        <p className="text-gray-500 mt-2 max-w-2xl">Managing {rows.length} bookings across all venues</p>
                     </div>
                     <div className="ml-auto shrink-0">
                         <AddManualBookingButton onClick={() => setManualOpen(true)} />
@@ -42,28 +58,38 @@ const Bookings = () => {
                 <Modal
                     open={manualOpen}
                     onClose={() => setManualOpen(false)}
+                    showCloseButton={false}
                     title="Add Manual Booking"
                     footer={
-                        <button
-                            type="submit"
-                            form="manual-booking-form"
-                            className="rounded-md px-4 py-2 bg-black text-white"
-                        >
-                            Save
-                        </button>
-                    }
-                >
-                    <ManualBookingForm onDone={() => setManualOpen(false)} />
+                        <>
+                            <button type="button" onClick={() => setManualOpen(false)}
+                                    className="rounded-md border px-4 py-2">Cancel</button>
+                            <button type="submit" form="manual-booking-form"
+                                    className="ml-2 rounded-md px-4 py-2 bg-black text-white">
+                                Add Booking
+                            </button>
+                        </> } >
+                    <ManualBookingForm
+                        onCreate={handleCreate}
+                        onDone={() => setManualOpen(false)}
+                    />
                 </Modal>
 
+
                 <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-                    {bookingData.map((card) => (
+                    {bookingData.map(card => (
                         <BookingMetricCard key={card.title} {...card} />
                     ))}
                 </section>
 
                 <div className="mt-6">
                     <BookingFilters />
+                </div>
+                <div className="mt-6">
+                    <BookingsTable
+                        rows={rows}
+                        onDelete={handleDelete}
+                        onView={(row) => console.log("view", row)}/>
                 </div>
             </main>
         </div>

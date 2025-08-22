@@ -63,3 +63,16 @@ export interface BookingCard {
     subtitle: string;
     Icon?: IconType;
 }
+
+export interface BookingRow {
+    id: string;
+    venue: string;
+    city: string;
+    booker: string;
+    company: string;
+    role: string;
+    partysize: number;
+    date: string;
+    status: BookingStatus;
+    source: Provider;
+}

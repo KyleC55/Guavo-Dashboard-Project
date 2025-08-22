@@ -1,11 +1,12 @@
-// src/components/Modal.ts (no JSX)
 import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 type ModalProps = {
     open: boolean;
-    title?: string;
+    title?: React.ReactNode;
     onClose: () => void;
     children: React.ReactNode;
+    footer?: React.ReactNode;
 };
 
 export default function Modal({ open, title, onClose, children }: ModalProps) {
@@ -28,7 +29,15 @@ export default function Modal({ open, title, onClose, children }: ModalProps) {
 
     if (!open) return null;
 
-    return React.createElement(
+    const headerEl =
+        title == null
+            ? null
+            : (typeof title === "string"
+                    ? React.createElement("h2", { className: "mb-4 text-xl font-semibold" }, title)
+                    : React.createElement("div", { className: "mb-4" }, title) // <-- render node as-is
+            );
+
+    const tree = React.createElement(
         "div",
         { className: "fixed inset-0 z-[9999] flex items-center justify-center" },
         React.createElement("div", {
@@ -36,7 +45,6 @@ export default function Modal({ open, title, onClose, children }: ModalProps) {
             onClick: onClose,
             "aria-hidden": "true",
         }),
-        // Panel
         React.createElement(
             "div",
             {
@@ -44,17 +52,10 @@ export default function Modal({ open, title, onClose, children }: ModalProps) {
                 role: "dialog",
                 "aria-modal": "true",
                 tabIndex: -1,
-                className:
-                    "relative z-10 w-full max-w-lg rounded-xl bg-white p-6 shadow-xl outline-none",
+                className: "relative z-10 w-full max-w-lg rounded-xl bg-white p-6 shadow-xl outline-none",
                 onClick: (e: any) => e.stopPropagation(),
             },
-            title
-                ? React.createElement(
-                    "h2",
-                    { className: "mb-4 text-xl font-semibold" },
-                    title
-                )
-                : null,
+            headerEl,
             children,
             React.createElement(
                 "div",
@@ -71,4 +72,6 @@ export default function Modal({ open, title, onClose, children }: ModalProps) {
             )
         )
     );
+
+    return createPortal(tree, document.body);
 }

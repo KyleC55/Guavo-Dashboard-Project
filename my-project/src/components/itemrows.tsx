@@ -2,10 +2,10 @@ import React from 'react';
 
 export const ItemRow: React.FC<{
     title: React.ReactNode;
-    tag?: React.ReactNode;                  // e.g., provider chip
-    subtitle?: string;                      // “Sarah Chen · TechCorp · 12 guests”
-    meta?: string;                          // “Today 7:00 PM”
-    rightBadge?: React.ReactNode;           // status on the right
+    tag?: React.ReactNode;
+    subtitle?: string;
+    meta?: string;
+    rightBadge?: React.ReactNode;
 }> = ({ title, tag, subtitle, meta, rightBadge }) => (
     <div className="flex items-start justify-between rounded-xl border border-neutral-200 px-4 py-3">
         <div className="min-w-0">

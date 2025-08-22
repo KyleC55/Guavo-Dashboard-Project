@@ -1,6 +1,10 @@
-import { useMemo, useState } from "react";
-import type {AddBookings} from "../../types/types.ts";
-import { useNavigate } from "react-router-dom";
+// components/manualbookings.tsx
+import React, { useMemo, useState } from "react";
+import type { AddBookings } from "../../types/types";
+
+type ManualBookingFormProps = {
+    onDone?: () => void; // 👈 declare the prop you’re passing
+};
 
 function generateTimes(stepMinutes = 30, startHour = 8, endHour = 22) {
     const out: string[] = [];
@@ -14,9 +18,7 @@ function generateTimes(stepMinutes = 30, startHour = 8, endHour = 22) {
     return out;
 }
 
-export default function ManualBookingForm() {
-    const navigate = useNavigate();
-
+export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
     const [form, setForm] = useState<AddBookings>({
         venue: "",
         name: "",
@@ -26,7 +28,7 @@ export default function ManualBookingForm() {
         partysize: 1,
         date: "",
         startTime: "",
-        endTime:"",
+        endTime: "",
         notes: "",
     });
 
@@ -37,18 +39,19 @@ export default function ManualBookingForm() {
     const allTimes = useMemo(() => generateTimes(30, 8, 22), []);
     const endTimeOptions = useMemo(() => {
         if (!form.startTime) return allTimes;
-        return allTimes.filter(t => t > form.startTime);
+        return allTimes.filter((t) => t > form.startTime);
     }, [allTimes, form.startTime]);
 
-    const update = (key: keyof AddBookings, value: string) =>
-        setForm(prev => ({ ...prev, [key]: value }));
+    const update = (key: keyof AddBookings, value: string | number) =>
+        setForm((prev) => ({ ...prev, [key]: value as any }));
 
     const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
     const validate = () => {
         const e: Record<string, string> = {};
-        if (!form.name.trim()) e.customerName = "Required";
-        if (!form.venue) e.venueId = "Required";
+        // 🔧 make keys match what you render below
+        if (!form.name.trim()) e.name = "Required";
+        if (!form.venue) e.venue = "Required";
         if (!form.date) e.date = "Required";
         if (!form.startTime) e.startTime = "Required";
         if (!form.endTime) e.endTime = "Required";
@@ -65,47 +68,47 @@ export default function ManualBookingForm() {
 
         setSubmitting(true);
         try {
+            // simulate API
             await new Promise((res) => setTimeout(res, 400));
             setSuccessMsg("Manual booking created.");
-            setTimeout(() => navigate("/bookings"), 500);
+            onDone?.(); // 👈 close modal (parent handles state)
         } catch {
-            setErrors((prev) => ({ ...prev, submit: "Failed to create booking. Try again." }));
+            setErrors((prev) => ({
+                ...prev,
+                submit: "Failed to create booking. Try again.",
+            }));
         } finally {
             setSubmitting(false);
         }
     };
 
     return (
-        <div className="p-6 max-w-3xl">
-            <div className="mb-4 text-sm text-gray-500">
-                <button onClick={() => navigate(-1)} className="underline">Back</button> / Manual Booking
-            </div>
-
-            <h1 className="text-3xl font-semibold">Add Manual Booking</h1>
-            <p className="text-gray-500 mt-1">Create a booking on behalf of a customer.</p>
-
+        <div className="p-1 sm:p-0">
             {successMsg && (
-                <div className="mt-4 rounded border border-green-300 bg-green-50 px-3 py-2 text-green-800">
+                <div className="mb-4 rounded border border-green-300 bg-green-50 px-3 py-2 text-green-800">
                     {successMsg}
                 </div>
             )}
             {errors.submit && (
-                <div className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800">
+                <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800">
                     {errors.submit}
                 </div>
             )}
 
-            <form onSubmit={submit} className="mt-6 space-y-5">
+            {/* 👇 ID so your header button can requestSubmit() */}
+            <form id="manual-booking-form" onSubmit={submit} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm mb-1">Customer Name *</label>
                         <input
                             className="w-full rounded border px-3 py-2"
                             value={form.name}
-                            onChange={e => update("name", e.target.value)}
+                            onChange={(e) => update("name", e.target.value)}
                             placeholder="Jane Doe"
                         />
-                        {errors.customerName && <p className="text-xs text-red-600 mt-1">{errors.customerName}</p>}
+                        {errors.name && (
+                            <p className="text-xs text-red-600 mt-1">{errors.name}</p>
+                        )}
                     </div>
 
                     <div>
@@ -113,12 +116,14 @@ export default function ManualBookingForm() {
                         <select
                             className="w-full rounded border px-3 py-2"
                             value={form.venue}
-                            onChange={e => update("venue", e.target.value)}
+                            onChange={(e) => update("venue", e.target.value)}
                         >
                             <option value="">Select a venue</option>
-
+                            {/* TODO: map venues */}
                         </select>
-                        {errors.venue && <p className="text-xs text-red-600 mt-1">{errors.venue}</p>}
+                        {errors.venue && (
+                            <p className="text-xs text-red-600 mt-1">{errors.venue}</p>
+                        )}
                     </div>
                 </div>
 
@@ -129,7 +134,7 @@ export default function ManualBookingForm() {
                             type="email"
                             className="w-full rounded border px-3 py-2"
                             value={form.email ?? ""}
-                            onChange={e => update("email", e.target.value)}
+                            onChange={(e) => update("email", e.target.value)}
                             placeholder="jane@example.com"
                         />
                     </div>
@@ -138,7 +143,7 @@ export default function ManualBookingForm() {
                         <input
                             className="w-full rounded border px-3 py-2"
                             value={form.phonenumber ?? ""}
-                            onChange={e => update("phonenumber", e.target.value)}
+                            onChange={(e) => update("phonenumber", e.target.value)}
                             placeholder="+1 555 123 4567"
                         />
                     </div>
@@ -152,9 +157,11 @@ export default function ManualBookingForm() {
                             min={today}
                             className="w-full rounded border px-3 py-2"
                             value={form.date}
-                            onChange={e => update("date", e.target.value)}
+                            onChange={(e) => update("date", e.target.value)}
                         />
-                        {errors.date && <p className="text-xs text-red-600 mt-1">{errors.date}</p>}
+                        {errors.date && (
+                            <p className="text-xs text-red-600 mt-1">{errors.date}</p>
+                        )}
                     </div>
 
                     <div>
@@ -162,12 +169,18 @@ export default function ManualBookingForm() {
                         <select
                             className="w-full rounded border px-3 py-2"
                             value={form.startTime}
-                            onChange={e => update("startTime", e.target.value)}
+                            onChange={(e) => update("startTime", e.target.value)}
                         >
                             <option value="">Select time</option>
-                            {allTimes.map(t => <option key={t} value={t}>{t}</option>)}
+                            {allTimes.map((t) => (
+                                <option key={t} value={t}>
+                                    {t}
+                                </option>
+                            ))}
                         </select>
-                        {errors.startTime && <p className="text-xs text-red-600 mt-1">{errors.startTime}</p>}
+                        {errors.startTime && (
+                            <p className="text-xs text-red-600 mt-1">{errors.startTime}</p>
+                        )}
                     </div>
 
                     <div>
@@ -175,13 +188,21 @@ export default function ManualBookingForm() {
                         <select
                             className="w-full rounded border px-3 py-2"
                             value={form.endTime}
-                            onChange={e => update("endTime", e.target.value)}
+                            onChange={(e) => update("endTime", e.target.value)}
                             disabled={!form.startTime}
                         >
-                            <option value="">{form.startTime ? "Select time" : "Pick start time first"}</option>
-                            {endTimeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                            <option value="">
+                                {form.startTime ? "Select time" : "Pick start time first"}
+                            </option>
+                            {endTimeOptions.map((t) => (
+                                <option key={t} value={t}>
+                                    {t}
+                                </option>
+                            ))}
                         </select>
-                        {errors.endTime && <p className="text-xs text-red-600 mt-1">{errors.endTime}</p>}
+                        {errors.endTime && (
+                            <p className="text-xs text-red-600 mt-1">{errors.endTime}</p>
+                        )}
                     </div>
                 </div>
 
@@ -191,7 +212,7 @@ export default function ManualBookingForm() {
                         className="w-full rounded border px-3 py-2"
                         rows={3}
                         value={form.notes ?? ""}
-                        onChange={e => update("notes", e.target.value)}
+                        onChange={(e) => update("notes", e.target.value)}
                         placeholder="Any special requests…"
                     />
                 </div>
@@ -200,7 +221,7 @@ export default function ManualBookingForm() {
                     <button
                         type="button"
                         className="px-3 py-2 rounded border hover:bg-gray-100"
-                        onClick={() => navigate("/bookings")}
+                        onClick={() => onDone?.()} // cancel closes modal via parent
                     >
                         Cancel
                     </button>
@@ -216,4 +237,3 @@ export default function ManualBookingForm() {
         </div>
     );
 }
-

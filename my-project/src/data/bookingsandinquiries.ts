@@ -90,4 +90,5 @@ export const inquiriesPlaceholder: PendingInquiries[] = [
         date: 'Feb 20',
         status: 'negotiating',
     },
+
 ];

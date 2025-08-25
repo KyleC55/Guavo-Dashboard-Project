@@ -1,7 +1,7 @@
 import type {IconType} from "react-icons";
 
-export type BookingStatus = 'confirmed' | 'rejected' | 'pending';
-export type InquiryStatus = 'connecting' | 'negotiating' | 'confirmed' | 'canceled';
+export type BookingStatus = 'confirmed' | 'rejected' | 'pending' | 'cancelled';
+export type InquiryStatus = 'connecting' | 'negotiating' | 'confirmed' | 'cancelled';
 export type Provider = 'Resy' | 'OpenTable' | 'Manual'
 
 
@@ -75,4 +75,12 @@ export interface BookingRow {
     date: string;
     status: BookingStatus;
     source: Provider;
+    email?: string;
+    notes?: string;
+}
+
+export type VenueList = {
+    id: string;
+    name: string;
+    city: string;
 }

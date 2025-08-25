@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import type { AddBookings } from "../../types/types";
-import type { BookingRow } from "../../types/types";
+import type { AddBookings, BookingRow } from "../../types/types";
+import {venueOptions} from "../data/venuelist.ts";
 
 type ManualBookingFormProps = {
     onCreate: (data: Omit<BookingRow, "id">) => void;
@@ -20,7 +20,11 @@ function generateTimes(stepMinutes = 30, startHour = 8, endHour = 22) {
     return out;
 }
 
-export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
+export default function ManualBookingForm({
+                                              onCreate,
+                                              onDone,
+                                              onCancel,
+                                          }: ManualBookingFormProps) {
     const [form, setForm] = useState<AddBookings>({
         venue: "",
         name: "",
@@ -51,7 +55,6 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
 
     const validate = () => {
         const e: Record<string, string> = {};
-        // 🔧 make keys match what you render below
         if (!form.name.trim()) e.name = "Required";
         if (!form.venue) e.venue = "Required";
         if (!form.date) e.date = "Required";
@@ -60,20 +63,33 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
         if (form.startTime && form.endTime && form.startTime >= form.endTime) {
             e.endTime = "End must be after start";
         }
+        if (!form.partysize || form.partysize < 1) e.partysize = "Must be ≥ 1";
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
-    const submit = async (ev: React.FormEvent) => {
+    const submit: React.FormEventHandler<HTMLFormElement> = async (ev) => {
         ev.preventDefault();
         if (!validate()) return;
 
         setSubmitting(true);
         try {
-            // simulate API
-            await new Promise((res) => setTimeout(res, 400));
+            const startLocal = `${form.date}T${form.startTime}:00`;
+            const payload: Omit<BookingRow, "id"> = {
+                venue: form.venue,
+                city: "",
+                booker: form.name,
+                company: form.company || "",
+                role: "",
+                partysize: Number(form.partysize),
+                date: startLocal,
+                status: "confirmed",
+                source: "Manual",
+            };
+
+            onCreate(payload);
             setSuccessMsg("Manual booking created.");
-            onDone?.(); // 👈 close modal (parent handles state)
+            onDone?.();
         } catch {
             setErrors((prev) => ({
                 ...prev,
@@ -97,7 +113,6 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
                 </div>
             )}
 
-            {/* 👇 ID so your header button can requestSubmit() */}
             <form id="manual-booking-form" onSubmit={submit} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -108,9 +123,7 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
                             onChange={(e) => update("name", e.target.value)}
                             placeholder="Jane Doe"
                         />
-                        {errors.name && (
-                            <p className="text-xs text-red-600 mt-1">{errors.name}</p>
-                        )}
+                        {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
                     </div>
 
                     <div>
@@ -118,18 +131,34 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
                         <select
                             className="w-full rounded border px-3 py-2"
                             value={form.venue}
-                            onChange={(e) => update("venue", e.target.value)}
-                        >
+                            onChange={(e) => update("venue", e.target.value)}>
                             <option value="">Select a venue</option>
-                            {/* TODO: map venues */}
+                            {venueOptions.map(v => (
+                                <option key={v.id} value={v.name}>
+                                    {v.name}
+                                </option>
+                            ))}
                         </select>
-                        {errors.venue && (
-                            <p className="text-xs text-red-600 mt-1">{errors.venue}</p>
-                        )}
+                        {errors.venue && <p className="text-xs text-red-600 mt-1">{errors.venue}</p>}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label className="block text-sm mb-1">Party Size *</label>
+                        <input
+                            type="number"
+                            min={1}
+                            className="w-full rounded border px-3 py-2"
+                            value={form.partysize}
+                            onChange={(e) => update("partysize", Number(e.target.value))}
+                            placeholder="4"
+                        />
+                        {errors.partysize && (
+                            <p className="text-xs text-red-600 mt-1">{errors.partysize}</p>
+                        )}
+                    </div>
+
                     <div>
                         <label className="block text-sm mb-1">Email</label>
                         <input
@@ -140,6 +169,7 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
                             placeholder="jane@example.com"
                         />
                     </div>
+
                     <div>
                         <label className="block text-sm mb-1">Phone</label>
                         <input
@@ -161,9 +191,7 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
                             value={form.date}
                             onChange={(e) => update("date", e.target.value)}
                         />
-                        {errors.date && (
-                            <p className="text-xs text-red-600 mt-1">{errors.date}</p>
-                        )}
+                        {errors.date && <p className="text-xs text-red-600 mt-1">{errors.date}</p>}
                     </div>
 
                     <div>
@@ -223,7 +251,7 @@ export default function ManualBookingForm({ onDone }: ManualBookingFormProps) {
                     <button
                         type="button"
                         className="px-3 py-2 rounded border hover:bg-gray-100"
-                        onClick={() => onDone?.()} // cancel closes modal via parent
+                        onClick={() => onCancel ? onCancel() : onDone?.()}
                     >
                         Cancel
                     </button>

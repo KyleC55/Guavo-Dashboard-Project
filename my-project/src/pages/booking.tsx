@@ -12,11 +12,21 @@ import AddManualBookingButton from "../components/manualbookingadd.tsx";
 import BookingsTable from "../components/bookingrows.tsx";
 import { mockBooking } from "../data/mockbookings.ts";
 import type { BookingRow } from "../../types/types.ts";
+import {BookingDetails} from "../components/bookingdetails.tsx";
+
 
 const Bookings = () => {
     const [manualOpen, setManualOpen] = useState(false);
-
+    const [viewOpen, setViewOpen] = useState(false);
+    const [selected, setSelected] = useState<BookingRow | null>(null);
     const [rows, setRows] = useState<BookingRow[]>(mockBooking);
+
+    const handleCancel = (id: string) =>
+        setRows(prev => prev.map(r => (r.id === id ? { ...r, status: "cancelled" } : r)));
+
+    const handleCancelMany = (ids: string[]) =>
+        setRows(prev => prev.map(r => (ids.includes(r.id) ? { ...r, status: "cancelled" } : r)));
+
 
     const genBookingId = (list: BookingRow[]) => {
         const max = Math.max(0, ...list.map(r => parseInt(r.id.replace(/\D/g, "") || "0", 10)));
@@ -79,18 +89,29 @@ const Bookings = () => {
                 <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
                     {bookingData.map(card => (
                         <BookingMetricCard key={card.title} {...card} />
-                    ))}
+                    )
+                    )
+                    }
+
                 </section>
 
                 <div className="mt-6">
                     <BookingFilters />
                 </div>
-                <div className="mt-6">
-                    <BookingsTable
-                        rows={rows}
-                        onDelete={handleDelete}
-                        onView={(row) => console.log("view", row)}/>
-                </div>
+
+                <BookingsTable
+                    rows={rows}
+                    onDelete={handleDelete}
+                    onView={(row) => { setSelected(row); setViewOpen(true); }}
+                    onCancel={handleCancel}
+                    onCancelMany={handleCancelMany} />
+
+                <Modal
+                    open={viewOpen}
+                    onClose={() => setViewOpen(false)}
+                    title={selected ? `Booking Details - ${selected.id}` : "Booking Details"}>
+                    {selected && <BookingDetails row={selected} />}
+                </Modal>
             </main>
         </div>
     );

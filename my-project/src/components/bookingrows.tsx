@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { BookingRow } from "../../types/types";
 
 type Props = {
@@ -9,6 +9,31 @@ type Props = {
     onCancelMany?: (ids: string[]) => void;
 };
 
+const StatusPill: React.FC<{ status: BookingRow["status"] }> = ({ status }) => {
+    const colors: Record<BookingRow["status"], string> = {
+        confirmed: "bg-black text-white",
+        pending: "bg-amber-500/95 text-white",
+        cancelled: "bg-red-500/95 text-white",
+    };
+
+    return (
+        <span
+            className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
+                colors[status] || "bg-gray-200 text-gray-800"
+            }`}
+        >
+      {status}
+    </span>
+    );
+};
+
+const SourceBadge: React.FC<{ source: BookingRow["source"] }> = ({ source }) => (
+    <span className="inline-block rounded-md px-2 py-1 text-xs bg-blue-100 text-blue-700">
+    {source}
+  </span>
+);
+
+
 export default function BookingsTable({
                                           rows,
                                           onDelete,
@@ -16,231 +41,140 @@ export default function BookingsTable({
                                           onCancel,
                                           onCancelMany,
                                       }: Props) {
-    const [selected, setSelected] = useState<Set<string>>(new Set());
 
-    const allSelected = useMemo(
-        () => rows.length > 0 && rows.every(r => selected.has(r.id)),
-        [rows, selected]
-    );
-
-    const selectedIds = useMemo(() => Array.from(selected), [selected]);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+    const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(r.id));
+    const exactlyOneSelected = selectedIds.length === 1;
+    const selectedOneRow = exactlyOneSelected
+        ? rows.find((r) => r.id === selectedIds[0]) ?? null
+        : null;
 
     const toggleAll = () => {
-        if (allSelected) setSelected(new Set());
-        else setSelected(new Set(rows.map(r => r.id)));
+        if (allSelected) setSelectedIds([]);
+        else setSelectedIds(rows.map((r) => r.id));
     };
 
-    const toggleOne = (id: string) =>
-        setSelected(prev => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
+    const toggleOne = (id: string) => {
+        const next = new Set(selectedSet);
+        next.has(id) ? next.delete(id) : next.add(id);
+        setSelectedIds([...next]);
+    };
 
     return (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200">
-            {selected.size > 0 && (
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200">
-                    <div className="text-sm text-gray-700">{selected.size} selected</div>
+        <div className="w-full">
+            {selectedIds.length > 0 && (
+                <div className="mb-3 flex items-center justify-between rounded-xl border bg-gray-50 px-4 py-2">
+                    <div className="text-sm">{selectedIds.length} selected</div>
                     <div className="flex items-center gap-2">
                         <button
-                            type="button"
-                            className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
-                            onClick={() => onCancelMany?.(selectedIds)} >
+                            className="rounded-md bg-red-600 text-white px-3 py-1.5"
+                            onClick={() => onCancelMany?.(selectedIds)}
+                        >
                             Cancel selected
                         </button>
+
                         <button
-                            type="button"
-                            className="px-3 py-1.5 rounded border hover:bg-gray-100"
-                            onClick={() => setSelected(new Set())} >
+                            className="rounded-md border px-3 py-1.5"
+                            disabled={!selectedOneRow}
+                            onClick={() => {
+                                if (!selectedOneRow || !selectedOneRow) return;
+                                onView?.(selectedOneRow);
+                            }} >
+
+                            Edit
+                        </button>
+
+                        <button
+                            className="rounded-md border px-3 py-1.5"
+                            onClick={() => setSelectedIds([])} >
                             Clear
                         </button>
                     </div>
                 </div>
             )}
 
-            <table className="min-w-full text-sm">
+            <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-600">
-                <tr className="text-left">
-                    <Th className="w-10">
-                        <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={toggleAll}
-                            aria-label="Select all" />
-                    </Th>
-                    <Th>Booking ID</Th>
-                    <Th>Venue</Th>
-                    <Th>Booker</Th>
-                    <Th>Party</Th>
-                    <Th>
-                        <div className="inline-flex items-center gap-1">
-                            Date &amp; Time <span className="text-gray-400">▲</span>
-                        </div>
-                    </Th>
-                    <Th>Status</Th>
-                    <Th>Source</Th>
-                    <Th className="text-right pr-4">Actions</Th>
+                <tr>
+                    <th className="px-4 py-3">
+                        <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                    </th>
+                    <th className="text-left px-4 py-3">Booking ID</th>
+                    <th className="text-left px-4 py-3">Venue</th>
+                    <th className="text-left px-4 py-3">Booker</th>
+                    <th className="text-left px-4 py-3">Party</th>
+                    <th className="text-left px-4 py-3">Date & Time</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Source</th>
+                    <th className="text-left px-4 py-3">Actions</th>
                 </tr>
                 </thead>
 
-                <tbody className="divide-y divide-gray-100">
-                {rows.map(r => {
-                    const dt = splitDateTime(r.date);
-                    const isCancelled = r.status === "cancelled";
-                    return (
-                        <tr
-                            key={r.id}
-                            className={`bg-white hover:bg-gray-50 ${isCancelled ? "opacity-60" : ""}`} >
-                            <Td className="w-10">
-                                <input
-                                    type="checkbox"
-                                    checked={selected.has(r.id)}
-                                    onChange={() => toggleOne(r.id)}
-                                    aria-label={`Select ${r.id}`} />
-                            </Td>
+                <tbody>
+                {rows.map((row) => (
+                    <tr key={row.id} className="border-t">
+                        <td className="px-4 py-3">
+                            <input
+                                type="checkbox"
+                                checked={selectedSet.has(row.id)}
+                                onChange={() => toggleOne(row.id)}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </td>
+                        <td className="px-4 py-3 font-medium">{row.id}</td>
+                        <td className="px-4 py-3">{row.venue}</td>
+                        <td className="px-4 py-3">{row.booker}</td>
+                        <td className="px-4 py-3">{row.partysize}</td>
+                        <td className="px-4 py-3">{new Date(row.date).toLocaleString()}</td>
+                        <td className="px-4 py-3"><StatusPill status={row.status} /></td>
+                        <td className="px-4 py-3"><SourceBadge source={row.source} /></td>
+                        <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onCancel?.(row.id);
+                                    }}
+                                    className="px-2 py-1 rounded-md border hover:bg-gray-50"
+                                    title="Cancel" >
 
-                            <Td className="font-medium text-gray-900">{r.id}</Td>
+                                    Cancel
+                                </button>
 
-                            <Td>
-                                <div className="font-medium text-gray-900">{r.venue}</div>
-                                <div className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                                    <MapPin className="h-3 w-3" /> {r.city}
-                                </div>
-                            </Td>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onView?.(row);
+                                    }}
+                                    className="p-2 rounded-lg hover:bg-gray-100"
+                                    title="Quick View"
+                                >
+                                    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                                        <path d="M12 5c5.5 0 10 5.5 10 7s-4.5 7-10 7S2 14.5 2 12s4.5-7 10-7Zm0 3a4 4 0 1 0 .001 8.001A4 4 0 0 0 12 8Z" />
+                                    </svg>
+                                </button>
 
-                            <Td>
-                                <div className="font-medium text-gray-900">{r.booker}</div>
-                                <div className="mt-0.5 text-xs text-gray-500">
-                                    {r.company} • {r.role}
-                                </div>
-                            </Td>
-
-                            <Td className="tabular-nums">{r.partysize}</Td>
-
-                            <Td>
-                                <div className="tabular-nums">{dt.date}</div>
-                                <div className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
-                                    <Clock className="h-3 w-3" /> {dt.time}
-                                </div>
-                            </Td>
-
-                            <Td><StatusBadge status={r.status} /></Td>
-                            <Td><SourceBadge source={r.source} /></Td>
-
-                            <Td className="text-right pr-4">
-                                <div className="inline-flex items-center gap-3">
-                                    <button
-                                        type="button"
-                                        className="relative z-10 p-1 rounded hover:opacity-80 pointer-events-auto"
-                                        aria-label="View"
-                                        onClick={(e) => { e.stopPropagation(); onView?.(r); }}
-                                        title="View details" >
-                                        <Eye className="h-4 w-4" />
-                                    </button>
-
-                                    {!isCancelled && (
-                                        <button
-                                            type="button"
-                                            className="relative z-10 p-1 rounded hover:opacity-80 pointer-events-auto"
-                                            aria-label="Cancel booking"
-                                            onClick={(e) => { e.stopPropagation(); onCancel?.(r.id); }}
-                                            title="Cancel booking" >
-                                            ⛔
-                                        </button>
-                                    )}
-
-                                    <button
-                                        type="button"
-                                        className="relative z-10 p-1 rounded hover:opacity-80 pointer-events-auto"
-                                        aria-label="Delete"
-                                        onClick={(e) => { e.stopPropagation(); onDelete?.(r.id); }}
-                                        title="Delete booking" >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </Td>
-                        </tr>
-                    );
-                })}
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDelete?.(row.id);
+                                    }}
+                                    className="p-2 rounded-lg hover:bg-gray-100"
+                                    title="Delete" >
+                                    ×
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                )
+                )
+                }
                 </tbody>
             </table>
         </div>
-    );
-}
-
-function splitDateTime(s: string) {
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) {
-        const pad = (n: number) => String(n).padStart(2, "0");
-        return {
-            date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-            time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-        };
-    }
-    const [date, time = ""] = s.split(/[T ]/);
-    return { date, time };
-}
-
-function Th({ children, className = "" }: React.PropsWithChildren<{ className?: string }>) {
-    return <th className={`p-3 font-medium ${className}`}>{children}</th>;
-}
-function Td({ children, className = "" }: React.PropsWithChildren<{ className?: string }>) {
-    return <td className={`p-3 align-top ${className}`}>{children}</td>;
-}
-
-function StatusBadge({ status }: { status: BookingRow["status"] }) {
-    const cls: Record<BookingRow["status"], string> = {
-        confirmed: "bg-black text-white",
-        pending: "bg-amber-500/95 text-white",
-        rejected: "bg-gray-400 text-white",
-        cancelled: "bg-red-500/95 text-white",
-    } as const;
-    return (
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${cls[status]}`}>
-      {status}
-    </span>
-    );
-}
-
-function SourceBadge({ source }: { source: BookingRow["source"] }) {
-    const cls: Record<BookingRow["source"], string> = {
-        Resy: "bg-blue-100 text-blue-700",
-        OpenTable: "bg-green-100 text-green-700",
-        Manual: "bg-amber-100 text-amber-700",
-    } as const;
-    return (
-        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${cls[source]}`}>
-      {source}
-    </span>
-    );
-}
-
-function MapPin({ className = "" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-            <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/>
-        </svg>
-    );
-}
-function Clock({ className = "" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-            <path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm.75 5.5h-1.5v5l4 2.4.75-1.24-3.25-1.94V7.5Z"/>
-        </svg>
-    );
-}
-function Eye({ className = "" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-            <path d="M12 5c-5 0-9 4.5-10 7 1 2.5 5 7 10 7s9-4.5 10-7c-1-2.5-5-7-10-7Zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z"/>
-        </svg>
-    );
-}
-function X({ className = "" }: { className?: string }) {
-    return (
-        <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-            <path d="M6.4 5l-.9.9L11.1 11l-5.6 5.1.9.9L12 11.9l5.6 5.1.9-.9L12.9 11l5.6-5.1-.9-.9L12 10.1 6.4 5Z"/>
-        </svg>
     );
 }

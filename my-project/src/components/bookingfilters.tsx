@@ -4,8 +4,7 @@ export default function BookingFilters() {
             <input
                 type="text"
                 placeholder="Search bookings, venues, users..."
-                className="px-2 py-1 rounded-lg border border-gray-300 focus:outline-none focus:ring w-64"
-            />
+                className="px-2 py-1 rounded-lg border border-gray-300 focus:outline-none focus:ring w-64" />
 
             <select className="px-2 py-1 rounded-lg bg-gray-50">
                 <option>All Cities</option>

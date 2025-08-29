@@ -14,6 +14,7 @@ const StatusPill: React.FC<{ status: BookingRow["status"] }> = ({ status }) => {
         confirmed: "bg-black text-white",
         pending: "bg-amber-500/95 text-white",
         cancelled: "bg-red-500/95 text-white",
+        rejected: "bg-gray-400 text-white",
     };
 
     return (

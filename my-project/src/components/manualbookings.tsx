@@ -42,7 +42,7 @@ export default function ManualBookingForm({ onCreate, onDone, onCancel }: Manual
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const allTimes = useMemo(() => generateTimes(30, 8, 22), []);
     const endTimeOptions = useMemo(() => {
         if (!form.startTime) return allTimes;
@@ -69,9 +69,15 @@ export default function ManualBookingForm({ onCreate, onDone, onCancel }: Manual
         return Object.keys(e).length === 0;
     };
 
-    const submit: React.FormEventHandler<HTMLFormElement> = async ev => {
+    const submit: React.FormEventHandler<HTMLFormElement> = async (ev) => {
         ev.preventDefault();
-        if (!validate()) return;
+
+        if (!validate()) {
+            setErrorMsg("Booking not created. Please check the form.");
+            setSuccessMsg(null);
+            return;
+        }
+
         setSubmitting(true);
         try {
             const startLocal = `${form.date}T${form.startTime}:00`;
@@ -85,16 +91,28 @@ export default function ManualBookingForm({ onCreate, onDone, onCancel }: Manual
                 date: startLocal,
                 status: "confirmed",
                 source: "Manual",
+                email: form.email || "",
+                notes: form.notes || "",
             };
+
             onCreate(payload);
-            setSuccessMsg("Manual booking created.");
-            onDone?.();
+
+            setSuccessMsg("Booking successfully created");
+            setErrorMsg(null);
+
+            setTimeout(() => {
+                onDone?.();
+                setSuccessMsg(null);
+            }, 1200);
+
         } catch {
-            setErrors(prev => ({ ...prev, submit: "Failed to create booking. Try again." }));
+            setErrorMsg("Booking not created. Please try again.");
+            setSuccessMsg(null);
         } finally {
             setSubmitting(false);
         }
     };
+
 
     return (
         <div className="p-1 sm:p-0">
@@ -103,11 +121,12 @@ export default function ManualBookingForm({ onCreate, onDone, onCancel }: Manual
                     {successMsg}
                 </div>
             )}
-            {errors.submit && (
+            {errorMsg && (
                 <div className="mb-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-red-800">
-                    {errors.submit}
+                    {errorMsg}
                 </div>
             )}
+
             <form id="manual-booking-form" onSubmit={submit} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>

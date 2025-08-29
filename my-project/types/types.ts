@@ -79,8 +79,21 @@ export interface BookingRow {
     notes?: string;
 }
 
-export type VenueList = {
+export interface VenueList {
     id: string;
     name: string;
     city: string;
+}
+
+export interface BookingFilterState {
+    query: string;
+    city: string;
+    source: string;
+    status: string;
+    company: string;
+    dateFrom: string;
+    dateTo: string;
+    page: number;
+    pageSize: number;
+    total: number;
 }

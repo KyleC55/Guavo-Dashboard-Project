@@ -22,6 +22,8 @@ const Bookings = () => {
     const [rows, setRows] = useState<BookingRow[]>(mockBooking);
     const [editMode] = useState(false);
     const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+    const [confirmMultiOpen, setConfirmMultiOpen] = useState(false);
+    const [pendingCancelIds, setPendingCancelIds] = useState<string[]>([]);
 
     // Filters state (for search, dropdowns, dates, pagination summary)
     const [filters, setFilters] = useState<BookingFilterState>({
@@ -37,11 +39,58 @@ const Bookings = () => {
         total: 0,
     });
 
-    const handleCancel = (id: string) =>
-        setRows(prev => prev.map(r => (r.id === id ? { ...r, status: "cancelled" } : r)));
+    // Single cancel with toast
+    const handleCancel = (id: string) => {
+        let changed = 0;
+        setRows(prev =>
+            prev.map(r => {
+                if (r.id === id && r.status !== "cancelled") {
+                    changed++;
+                    return { ...r, status: "cancelled" };
+                }
+                return r;
+            })
+        );
+        setToast(
+            changed
+                ? { type: "success", message: "Booking cancelled ✅" }
+                : { type: "error", message: "Already cancelled or not found ❌" }
+        );
+        setTimeout(() => setToast(null), 3000);
+    };
 
-    const handleCancelMany = (ids: string[]) =>
-        setRows(prev => prev.map(r => (ids.includes(r.id) ? { ...r, status: "cancelled" } : r)));
+    // Multi cancel actual logic with toast
+    const handleCancelMany = (ids: string[]) => {
+        let changed = 0;
+        setRows(prev =>
+            prev.map(r => {
+                if (ids.includes(r.id) && r.status !== "cancelled") {
+                    changed++;
+                    return { ...r, status: "cancelled" };
+                }
+                return r;
+            })
+        );
+        setToast(
+            changed > 0
+                ? { type: "success", message: `${changed} booking${changed === 1 ? "" : "s"} cancelled ✅` }
+                : { type: "error", message: "No bookings were cancelled ❌" }
+        );
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    // Open confirm modal before bulk cancel
+    const requestCancelMany = (ids: string[]) => {
+        if (!ids || ids.length === 0) return;
+        setPendingCancelIds(ids);
+        setConfirmMultiOpen(true);
+    };
+
+    const doCancelMany = () => {
+        handleCancelMany(pendingCancelIds);
+        setConfirmMultiOpen(false);
+        setPendingCancelIds([]);
+    };
 
     const genBookingId = (list: BookingRow[]) => {
         const max = Math.max(0, ...list.map(r => parseInt(r.id.replace(/\D/g, "") || "0", 10)));
@@ -63,7 +112,6 @@ const Bookings = () => {
             setTimeout(() => setToast(null), 3000);
         }
     };
-
 
     const cities = useMemo(
         () => [...new Set(rows.map(r => r.city).filter(Boolean))].sort(),
@@ -113,7 +161,6 @@ const Bookings = () => {
     }, [rows, filters]);
 
     const total = filteredRows.length;
-
 
     return (
         // Bookings Page
@@ -190,7 +237,41 @@ const Bookings = () => {
                     onDelete={handleDelete}
                     onView={(row) => { setSelected(row); setViewOpen(true); }} // used by Edit button
                     onCancel={handleCancel}
-                    onCancelMany={handleCancelMany} />
+                    onCancelMany={requestCancelMany} />
+
+                {/* Confirm multiple cancel */}
+                <Modal
+                    open={confirmMultiOpen}
+                    onClose={() => setConfirmMultiOpen(false)}
+                    title="Cancel Multiple Bookings"
+                    showCloseButton={false}
+                >
+                    <div className="space-y-6">
+                        <p className="text-gray-600">
+                            Are you sure you want to cancel{" "}
+                            <span className="font-semibold">{pendingCancelIds.length}</span>{" "}
+                            selected booking{pendingCancelIds.length === 1 ? "" : "s"}? This action
+                            cannot be undone and will notify all affected parties.
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmMultiOpen(false)}
+                                className="rounded-md border px-4 py-2"
+                            >
+                                Keep Bookings
+                            </button>
+                            <button
+                                type="button"
+                                onClick={doCancelMany}
+                                className="rounded-md px-4 py-2 bg-red-600 text-white"
+                            >
+                                Cancel Bookings
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
 
                 <Modal
                     open={viewOpen}

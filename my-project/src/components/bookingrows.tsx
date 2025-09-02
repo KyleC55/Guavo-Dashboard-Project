@@ -5,8 +5,10 @@ type Props = {
     rows: BookingRow[];
     onDelete?: (id: string) => void;
     onView?: (row: BookingRow) => void;
+    onEdit?: (row: BookingRow) => void;
     onCancel?: (id: string) => void;
     onCancelMany?: (ids: string[]) => void;
+    onEditMany?: (ids: string[]) => void;
 };
 
 const StatusPill: React.FC<{ status: BookingRow["status"] }> = ({ status }) => {
@@ -34,22 +36,18 @@ const SourceBadge: React.FC<{ source: BookingRow["source"] }> = ({ source }) => 
   </span>
 );
 
-
 export default function BookingsTable({
                                           rows,
                                           onDelete,
                                           onView,
+                                          onEdit,
                                           onCancel,
                                           onCancelMany,
+                                          onEditMany,
                                       }: Props) {
-
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
     const allSelected = rows.length > 0 && rows.every((r) => selectedSet.has(r.id));
-    const exactlyOneSelected = selectedIds.length === 1;
-    const selectedOneRow = exactlyOneSelected
-        ? rows.find((r) => r.id === selectedIds[0]) ?? null
-        : null;
 
     const toggleAll = () => {
         if (allSelected) setSelectedIds([]);
@@ -70,25 +68,28 @@ export default function BookingsTable({
                     <div className="flex items-center gap-2">
                         <button
                             className="rounded-md bg-red-600 text-white px-3 py-1.5"
-                            onClick={() => onCancelMany?.(selectedIds)}
-                        >
+                            onClick={() => onCancelMany?.(selectedIds)} >
                             Cancel selected
                         </button>
 
                         <button
                             className="rounded-md border px-3 py-1.5"
-                            disabled={!selectedOneRow}
                             onClick={() => {
-                                if (!selectedOneRow || !selectedOneRow) return;
-                                onView?.(selectedOneRow);
-                            }} >
-
+                                if (selectedIds.length === 1) {
+                                    const row = rows.find((r) => r.id === selectedIds[0]);
+                                    if (row) onEdit?.(row);
+                                } else if (selectedIds.length > 1) {
+                                    onEditMany?.(selectedIds);
+                                }
+                            }}
+                        >
                             Edit
                         </button>
 
                         <button
                             className="rounded-md border px-3 py-1.5"
-                            onClick={() => setSelectedIds([])} >
+                            onClick={() => setSelectedIds([])}
+                        >
                             Clear
                         </button>
                     </div>
@@ -120,18 +121,24 @@ export default function BookingsTable({
                                 type="checkbox"
                                 checked={selectedSet.has(row.id)}
                                 onChange={() => toggleOne(row.id)}
-                                onClick={(e) => e.stopPropagation()}
-                            />
+                                onClick={(e) => e.stopPropagation()} />
                         </td>
                         <td className="px-4 py-3 font-medium">{row.id}</td>
                         <td className="px-4 py-3">{row.venue}</td>
                         <td className="px-4 py-3">{row.booker}</td>
-                        <td className="px-4 py-3">{row.partysize}</td>
+                        <td className="px-4 py-3">
+                            {(row as any).partySize ?? (row as any).partysize ?? (row as any).partysize}
+                        </td>
                         <td className="px-4 py-3">{new Date(row.date).toLocaleString()}</td>
-                        <td className="px-4 py-3"><StatusPill status={row.status} /></td>
-                        <td className="px-4 py-3"><SourceBadge source={row.source} /></td>
+                        <td className="px-4 py-3">
+                            <StatusPill status={row.status} />
+                        </td>
+                        <td className="px-4 py-3">
+                            <SourceBadge source={row.source} />
+                        </td>
                         <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
+                                {/* Cancel per-row */}
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -140,10 +147,10 @@ export default function BookingsTable({
                                     }}
                                     className="px-2 py-1 rounded-md border hover:bg-gray-50"
                                     title="Cancel" >
-
                                     Cancel
                                 </button>
 
+                                {/* Quick View */}
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -151,13 +158,13 @@ export default function BookingsTable({
                                         onView?.(row);
                                     }}
                                     className="p-2 rounded-lg hover:bg-gray-100"
-                                    title="Quick View"
-                                >
+                                    title="Quick View" >
                                     <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
                                         <path d="M12 5c5.5 0 10 5.5 10 7s-4.5 7-10 7S2 14.5 2 12s4.5-7 10-7Zm0 3a4 4 0 1 0 .001 8.001A4 4 0 0 0 12 8Z" />
                                     </svg>
                                 </button>
 
+                                {/* Delete per-row */}
                                 <button
                                     type="button"
                                     onClick={(e) => {
@@ -171,9 +178,7 @@ export default function BookingsTable({
                             </div>
                         </td>
                     </tr>
-                )
-                )
-                }
+                ))}
                 </tbody>
             </table>
         </div>

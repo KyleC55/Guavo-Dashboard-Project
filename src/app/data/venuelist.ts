@@ -1,4 +1,4 @@
-import type {VenueList} from "../../types/types.ts";
+import type {VenueList} from "../../../types/types.ts";
 
 export const venueOptions: VenueList[] = [
     { id: "vr-001", name: "The Rooftop Los Angeles",      city: "Los Angeles" },

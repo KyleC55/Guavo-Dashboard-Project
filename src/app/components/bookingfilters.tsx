@@ -1,4 +1,4 @@
-import type {BookingFilterState} from "../../types/types.ts";
+import type {BookingFilterState} from "../../../types/types.ts";
 
 type Props = {
     value: BookingFilterState;

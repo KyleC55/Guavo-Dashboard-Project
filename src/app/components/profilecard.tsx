@@ -1,5 +1,5 @@
 import React from "react";
-import type { Profile } from "../../types/types";
+import type { Profile } from "../../../types/types.ts";
 
 interface ProfileCardProps {
     profile: Profile;

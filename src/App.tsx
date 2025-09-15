@@ -1,9 +1,9 @@
 import { Routes, Route } from "react-router-dom";
-import Dashboard from "./pages/dashboard.tsx";
-import Booking from "./pages/booking.tsx";
-import Venues from "./pages/venues.tsx";
-import Inquiries from "./pages/inquiries.tsx";
-import Members from "./pages/members.tsx";
+import Dashboard from "./app/pages/dashboard.tsx";
+import Booking from "./app/pages/booking.tsx";
+import Venues from "./app/pages/venues.tsx";
+import Inquiries from "./app/pages/inquiries.tsx";
+import Members from "./app/pages/members.tsx";
 
 export default function App() {
     return (

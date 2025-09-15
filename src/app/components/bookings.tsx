@@ -1,7 +1,7 @@
 import React from 'react';
 import { ItemRow} from "./itemrows.tsx";
 import { Badge} from "./badge.tsx";
-import type { RecentBookings } from "../../types/types.ts";
+import type { RecentBookings } from "../../../types/types.ts";
 
 const providerTone = (p?: RecentBookings['provider']) =>
     p === 'Resy' ? 'neutral' :

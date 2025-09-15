@@ -1,4 +1,4 @@
-import type { VenuePerformance } from "../../types/types.ts";
+import type { VenuePerformance } from "../../../types/types.ts";
 
 export const venuePerformanceMock: VenuePerformance[] = [
     { category: 'Restaurants', active: 847, total: 900 },

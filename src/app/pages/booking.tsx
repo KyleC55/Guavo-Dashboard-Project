@@ -11,10 +11,10 @@ import { useState , useMemo } from "react";
 import AddManualBookingButton from "../components/manualbookingadd.tsx";
 import BookingsTable from "../components/bookingrows.tsx";
 import { mockBooking } from "../data/mockbookings.ts";
-import type { BookingRow } from "../../types/types.ts";
+import type { BookingRow } from "../../../types/types.ts";
 import { BookingDetails } from "../components/bookingdetails.tsx";
 import EditBookingDetails from "../components/editbookingdetails.tsx";
-import type { BookingFilterState } from "../../types/types.ts";
+import type { BookingFilterState } from "../../../types/types.ts";
 
 const Bookings = () => {
     const [manualOpen, setManualOpen] = useState(false);

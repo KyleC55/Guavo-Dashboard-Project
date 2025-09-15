@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import type { AddBookings, BookingRow } from "../../types/types";
+import type { AddBookings, BookingRow } from "../../../types/types.ts";
 import { venueOptions } from "../data/venuelist.ts";
 import SearchableSelect from "./venuesearch.tsx";
 

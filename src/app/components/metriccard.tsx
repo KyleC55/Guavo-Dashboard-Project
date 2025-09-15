@@ -1,4 +1,4 @@
-import type { MetricCardData } from "../../types/types.ts";
+import type { MetricCardData } from "../../../types/types.ts";
 
 export default function MetricCard({ title, value, change, notes }: MetricCardData) {
     const positive = change.trim().startsWith("+");

@@ -1,4 +1,4 @@
-import type {BookingCard} from "../../types/types.ts";
+import type {BookingCard} from "../../../types/types.ts";
 
 export default function BookingMetricCard({ title, value, subtitle, Icon }: BookingCard) {
     return (

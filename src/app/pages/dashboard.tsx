@@ -1,23 +1,23 @@
 import { useState } from "react";
-import Sidebar from "../components/sidebar";
-import Search from "../components/searchbar";
-import MetricCard from "../components/metriccard";
-import { metricCards } from "../data/metricCards";
-import { bookingsPlaceholder, inquiriesPlaceholder } from "../data/bookingsandinquiries";
-import { BookingItem } from "../components/bookings";
-import { InquiryItem } from "../components/inquiries";
-import { SectionCard } from "../components/sectioncard";
-import { VenueCard } from "../components/venuecard";
-import { venuePerformanceMock } from "../data/venue";
-import { ProfileCard } from "../components/profilecard";
-import { displayProfile } from "../data/profile";
-import { Quickactionbox } from "../components/quickactionbox";
+import Sidebar from "../components/sidebar.tsx";
+import Search from "../components/searchbar.tsx";
+import MetricCard from "../components/metriccard.tsx";
+import { metricCards } from "../data/metricCards.ts";
+import { bookingsPlaceholder, inquiriesPlaceholder } from "../data/bookingsandinquiries.ts";
+import { BookingItem } from "../components/bookings.tsx";
+import { InquiryItem } from "../components/inquiries.tsx";
+import { SectionCard } from "../components/sectioncard.tsx";
+import { VenueCard } from "../components/venuecard.tsx";
+import { venuePerformanceMock } from "../data/venue.ts";
+import { ProfileCard } from "../components/profilecard.tsx";
+import { displayProfile } from "../data/profile.ts";
+import { Quickactionbox } from "../components/quickactionbox.tsx";
 import { MdOutlineDashboard } from "react-icons/md";
 import { FaRegClock } from "react-icons/fa";
 import { HiOutlineChat } from "react-icons/hi";
 import { CiCalendar } from "react-icons/ci";
 import { useNavigate } from "react-router-dom";
-import Modal from "../components/modal";
+import Modal from "../components/modal.tsx";
 import ManualBookingForm from "../components/manualbookings.tsx";
 
 const Dashboard = () => {

@@ -1,4 +1,4 @@
-import type { RecentBookings, PendingInquiries } from "../../types/types.ts";
+import type { RecentBookings, PendingInquiries } from "../../../types/types.ts";
 
 export const bookingsPlaceholder: RecentBookings[] = [
     {

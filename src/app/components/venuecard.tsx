@@ -1,6 +1,6 @@
 // src/components/VenuePerformanceCard.tsx
 import React from 'react';
-import type { VenuePerformance } from "../../types/types.ts";
+import type { VenuePerformance } from "../../../types/types.ts";
 
 export const VenueCard: React.FC<{ data: VenuePerformance }> = ({ data }) => {
     const utilization = Math.round((data.active / data.total) * 100);

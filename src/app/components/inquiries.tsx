@@ -1,7 +1,7 @@
 import React from 'react';
 import { ItemRow } from "./itemrows.tsx";
 import { Badge} from "./badge.tsx";
-import type { PendingInquiries} from "../../types/types.ts";
+import type { PendingInquiries} from "../../../types/types.ts";
 import { FiPhoneCall } from 'react-icons/fi';
 import { TbArrowsExchange } from 'react-icons/tb';
 

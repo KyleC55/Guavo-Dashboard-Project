@@ -1,4 +1,4 @@
-import type { BookingRow } from "../../types/types.ts";
+import type { BookingRow } from "../../../types/types.ts";
 
 export const mockBooking: BookingRow[] = [
     {

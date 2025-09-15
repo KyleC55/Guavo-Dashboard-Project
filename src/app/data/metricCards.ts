@@ -1,4 +1,4 @@
-import type {BookingCard, MetricCardData} from "../../types/types.ts";
+import type {BookingCard, MetricCardData} from "../../../types/types.ts";
 import {FaCalendar} from "react-icons/fa";
 import { IoIosTrendingUp } from "react-icons/io";
 import { SlPeople } from "react-icons/sl";

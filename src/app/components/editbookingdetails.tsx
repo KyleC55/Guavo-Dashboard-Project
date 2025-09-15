@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BookingRow } from "../../types/types";
+import type { BookingRow } from "../../../types/types.ts";
 
 type Props = {
     row: BookingRow;

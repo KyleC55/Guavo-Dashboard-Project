@@ -10,7 +10,7 @@ export const keycloak = new Keycloak({
     clientId: KEYCLOAK_CLIENT_ID,
 });
 
-// Optional: init options for .init()
+// Optional: init options for .init(
 const initOptions: KeycloakInitOptions = {
     responseMode: "fragment",
     checkLoginIframe: false,

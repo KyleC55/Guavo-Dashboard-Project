@@ -87,7 +87,7 @@ export default function ManualBookingForm({ onCreate, onDone, onCancel }: Manual
                 booker: form.name,
                 company: form.company || "",
                 role: "",
-                partysize: Number(form.partysize),
+                partySize: Number(form.partysize),
                 date: startLocal,
                 status: "confirmed",
                 source: "Manual",

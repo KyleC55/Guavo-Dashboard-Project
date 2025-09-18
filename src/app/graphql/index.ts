@@ -1,52 +1,54 @@
 import {
-    ApolloClient,
-    createHttpLink,
-    from,
-    InMemoryCache,
+    ApolloClient, InMemoryCache, createHttpLink, from, ApolloLink
 } from "@apollo/client";
-import { LocalStorageKeys } from "../constants";
-
 import { setContext } from "@apollo/client/link/context";
-import { logout } from "../../keycloak";
 import { onError } from "@apollo/client/link/error";
+import { LocalStorageKeys } from "../constants";
+import { logout } from "../../keycloak";
 
+const httpLink = createHttpLink({ uri: "/api/adminGQL" });
 
-export const errorLink = onError((raw) => {
-    const err = raw as any;
-    if (err.graphQLErrors?.length) {
-        for (const g of err.graphQLErrors) console.warn("[GQL]", g.message);
-    }
-    const status =
-        err.networkError?.status ??
-        err.networkError?.statusCode ??
-        err.networkError?.response?.status;
-    if (status === 401) logout();
-});
-
-
-const httpLink = createHttpLink({
-    uri: `/api/adminGQL`,
+const csrfLink = new ApolloLink((operation, forward) => {
+    operation.setContext(({ headers = {} }) => ({
+        headers: {
+            ...headers,
+            "content-type": "application/json",
+            "x-apollo-operation-name": operation.operationName || "AnonymousOperation",
+            "apollo-require-preflight": "true",
+        },
+    }));
+    return forward(operation);
 });
 
 const authLink = setContext((_, { headers }) => {
-    // get the authentication token from local storage if it exists
-    // return the headers to the context so httpLink can read them
+    const token = localStorage.getItem(LocalStorageKeys.Token);
     return {
         headers: {
             ...headers,
-            authorization: `Bearer ${getToken()}`,
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
     };
 });
 
-export const client = new ApolloClient({
-    link: from([errorLink, authLink, httpLink]),
-    cache: new InMemoryCache(),
+const sanitize = new ApolloLink((op, fwd) => {
+    const h = op.getContext().headers || {};
+    if (h.authorization === "Bearer null" || h.authorization === "Bearer undefined") {
+        const { authorization, ...rest } = h;
+        op.setContext({ headers: rest });
+    }
+    return fwd(op);
 });
 
-function getToken() {
-    return localStorage.getItem(LocalStorageKeys.Token);
-}
+const errors = onError(({ graphQLErrors, networkError }) => {
+    if (graphQLErrors?.some((e: any) =>
+        e?.extensions?.code === "UNAUTHORIZED" || e?.extensions?.code === "UNAUTHENTICATED")) {
+        logout(); return;
+    }
+    const s = (networkError as any)?.statusCode ?? (networkError as any)?.status ?? (networkError as any)?.response?.status;
+    if (s === 401) logout();
+});
 
-export * from "./queries";
-export * from "./mutations";
+export const client = new ApolloClient({
+    link: from([errors, csrfLink, sanitize, authLink, httpLink]),
+    cache: new InMemoryCache(),
+});

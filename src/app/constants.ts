@@ -113,6 +113,8 @@ export const CountryList = {
 } as const;
 export type CountryList = typeof CountryList[keyof typeof CountryList];
 
-// Keycloak IDs (placeholders)
-export const KEYCLOAK_REALM = "ACCESS";
-export const KEYCLOAK_CLIENT_ID = "ACCESS";
+
+export const KEYCLOAK_REALM = import.meta.env.VITE_KEYCLOAK_REALM || "ACCESS";
+export const KEYCLOAK_CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || "ACCESS";
+
+

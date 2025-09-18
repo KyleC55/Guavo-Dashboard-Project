@@ -64,20 +64,6 @@ export interface BookingCard {
     Icon?: IconType;
 }
 
-export interface BookingRow {
-    id: string;
-    venue: string;
-    city: string;
-    booker: string;
-    company: string;
-    role: string;
-    partysize: number;
-    date: string;
-    status: BookingStatus;
-    source: Provider;
-    email?: string;
-    notes?: string;
-}
 
 export interface VenueList {
     id: string;
@@ -96,4 +82,24 @@ export interface BookingFilterState {
     page: number;
     pageSize: number;
     total: number;
+}
+
+// in types/types.ts
+
+export interface BookingRow {
+    id: string;                     // booking uuid or generated id
+    status: 'confirmed' | 'pending' | 'cancelled' | string;
+    date: string;                   // ISO string of the reservation start time
+    venue: string;                  // table/restaurant name
+    booker: string;                 // member full name
+    email: string;
+    notes: string;
+
+    // Extra fields used for filtering in Bookings page
+    city: string;
+    source: string;
+    company: string;
+    role: string;
+    phone: string;
+
 }

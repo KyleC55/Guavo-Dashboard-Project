@@ -1,5 +1,8 @@
+
 export interface AdminReservation {
     uuid: string;
+    status: string;
+    date: { start: string; end: string };
     table: {
         label: string;
         type: string;
@@ -8,14 +11,7 @@ export interface AdminReservation {
         maxPartySize: number;
         minPartySize: number;
     } | null;
-    credit: {
-        amount: number;
-    } | null;
-    date: {
-        start: string;
-        end: string;
-    };
-    status: string;
+    credit: { amount: number } | null;
     member: {
         uuid: string;
         membershipId: string;
@@ -38,7 +34,13 @@ export interface AdminReservation {
 
 export interface AdminReservationsResponse {
     reservations: {
-        items: AdminReservation[];
         count: number;
+        items: AdminReservation[];
     };
+}
+
+export interface AdminReservationsVars {
+    uuid?: string;
+    search?: { from?: string; to?: string };
+    pagination: { limit: number; offset: number };
 }

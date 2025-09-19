@@ -1,58 +1,68 @@
-import {gql} from "@apollo/client";
+import { gql } from '@apollo/client'
 
-export const GET_ADMIN_RESERVATIONS = gql`
-    query AdminReservations(
-        $uuid: String
-        $from: String
-        $to: String
-        $limit: Int
-        $offset: Int
-    ) {
-        reservations(
-            uuid: $uuid
-            search: { from: $from, to: $to }
-            pagination: { limit: $limit, offset: $offset }
-        ) {
+export const GET_ALL_RESERVATIONS = gql`
+    query AllReservations($limit: Int!, $offset: Int!) {
+        allReservations(pagination: { limit: $limit, offset: $offset }) {
+            count
             items {
                 uuid
+                status
+                note
+                notificationId
+                createdAt
+                updatedAt
+                date { start end expiry }
                 table {
                     label
                     type
                     location
                     recommendedPartySize
+                    reservedPartySize
                     maxPartySize
                     minPartySize
                 }
-                credit {
-                    amount
-                }
-                date {
-                    start
-                    end
-                }
-                status
-                member {
-                    uuid
-                    membershipId
-                    allergies
-                    restrictions
-                    bio
-                    joinDate
-                    birthDate
-                    profilePicture
-                    username
-                    firstName
-                    lastName
-                    preferredName
-                    email
-                    phone
-                }
-                createdAt
-                updatedAt
+                restaurant { uuid name timezone }
             }
-            count
         }
     }
 `;
 
-
+export const GET_ADMIN_RESERVATIONS = gql`
+  query AdminReservations($uuid: String, $from: String, $to: String, $limit: Int!, $offset: Int!) {
+    reservations(
+      uuid: $uuid
+      search: { from: $from, to: $to }
+      pagination: { limit: $limit, offset: $offset }
+    ) {
+      count
+      items {
+        uuid
+        status
+        note
+        notificationId
+        createdAt
+        updatedAt
+        date { start end expiry }
+        table {
+          label
+          type
+          location
+          recommendedPartySize
+          reservedPartySize
+          maxPartySize
+          minPartySize
+        }
+        restaurant { uuid name timezone }
+        credit { amount }
+        member {
+          uuid
+          username
+          firstName
+          lastName
+          email
+          phone
+        }
+      }
+    }
+  }
+`;

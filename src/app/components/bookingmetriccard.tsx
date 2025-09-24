@@ -17,3 +17,4 @@ export default function BookingMetricCard({ icon: Icon, label, value }: BookingM
         </div>
     );
 }
+

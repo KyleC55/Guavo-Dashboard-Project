@@ -1,5 +1,5 @@
 import type {IconType} from "react-icons";
-
+import {ReservationStatus} from "../src/app/constants.ts";
 export type BookingStatus = 'confirmed' | 'rejected' | 'pending' | 'cancelled';
 export type InquiryStatus = 'connecting' | 'negotiating' | 'confirmed' | 'cancelled';
 export type Provider = 'Resy' | 'OpenTable' | 'Manual'
@@ -84,18 +84,15 @@ export interface BookingFilterState {
     total: number;
 }
 
-// in types/types.ts
-
 export interface BookingRow {
-    id: string;                     // booking uuid or generated id
-    status: 'confirmed' | 'pending' | 'cancelled' | string;
-    date: string;                   // ISO string of the reservation start time
-    venue: string;                  // table/restaurant name
-    booker: string;                 // member full name
+    id: string;
+    status: ReservationStatus;
+    date: string;
+    venue: string;
+    booker: string;
     email: string;
     notes: string;
 
-    // Extra fields used for filtering in Bookings page
     city: string;
     source: string;
     company: string;

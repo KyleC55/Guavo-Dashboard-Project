@@ -1,8 +1,6 @@
 import { useState } from "react";
 import Sidebar from "../components/sidebar.tsx";
 import Search from "../components/searchbar.tsx";
-import MetricCard from "../components/metriccard.tsx";
-import { metricCards } from "../data/metricCards.ts";
 import { bookingsPlaceholder, inquiriesPlaceholder } from "../data/bookingsandinquiries.ts";
 import { BookingItem } from "../components/bookings.tsx";
 import { InquiryItem } from "../components/inquiries.tsx";
@@ -39,12 +37,6 @@ const Dashboard = () => {
                 <h2 className="text-gray-500 mt-2 ml-2 max-w-2xl">
                     Enterprise venue management overview across all locations
                 </h2>
-
-                <div className="mt-6 mx-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-                    {metricCards.map((card) => (
-                        <MetricCard key={card.title} {...card} />
-                    ))}
-                </div>
 
                 <div className="grid gap-6 md:grid-cols-2 mt-6">
                     <SectionCard title="Recent Bookings" onViewAll={() => navigate("/bookings")}>

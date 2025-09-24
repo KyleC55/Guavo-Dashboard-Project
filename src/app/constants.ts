@@ -1,6 +1,3 @@
-// constants.ts
-
-// --- UI ---
 export const UIMode = {
     Light: "light",
     Dark: "dark",
@@ -55,6 +52,7 @@ export const ReservationStatus = {
     LISTED: "LISTED",
     RESERVED: "RESERVED",
     FREE_BOOKED: "FREE_BOOKED",
+    CASH_BOOKED: "CASH_BOOKED",
     CANCELED: "CANCELED",
     RELEASED: "RELEASED",
     CANCEL_PENDING: "CANCEL_PENDING",

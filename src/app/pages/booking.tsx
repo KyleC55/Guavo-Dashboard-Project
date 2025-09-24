@@ -3,13 +3,12 @@ import Sidebar from "../components/sidebar.tsx";
 import Search from "../components/searchbar.tsx";
 import { ProfileCard } from "../components/profilecard.tsx";
 import { displayProfile } from "../data/profile.ts";
-import { bookingData } from "../data/metricCards.ts";
-import BookingMetricCard from "../components/bookingmetriccard.tsx";
-import BookingFilters from "../components/bookingfilters.tsx";
 import Modal from "../components/modal.tsx";
 import ManualBookingForm from "../components/manualbookings.tsx";
 import AddManualBookingButton from "../components/manualbookingadd.tsx";
 import ReservationsTable from "../components/reservationtable.tsx";
+import MetricsBar from "../components/metricsbar.tsx";
+import BookingFilters from "../components/bookingfilters.tsx";
 import type { BookingFilterState } from "../../../types/types.ts";
 
 const Bookings = () => {
@@ -70,6 +69,29 @@ const Bookings = () => {
                     </div>
                 </div>
 
+                <section className="mt-6">
+                    <MetricsBar />
+                </section>
+
+                <div className="mt-6">
+                    <BookingFilters
+                        value={filters}
+                        onChange={(patch) => {
+                            const next = { ...filters, ...patch };
+                            setFilters(next);
+                        }}
+                        cities={[]}
+                        sources={[]}
+                        statuses={[]}
+                        companies={[]}
+                        total={0}
+                    />
+                </div>
+
+                <div className="mt-8">
+                    <ReservationsTable />
+                </div>
+
                 <Modal
                     open={manualOpen}
                     onClose={() => setManualOpen(false)}
@@ -96,32 +118,6 @@ const Bookings = () => {
                 >
                     <ManualBookingForm onCreate={handleCreate} onDone={() => setManualOpen(false)} />
                 </Modal>
-
-                <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-                    {bookingData.map((card) => (
-                        <BookingMetricCard key={card.title} {...card} />
-                    ))}
-                </section>
-
-                <div className="mt-6">
-                    <BookingFilters
-                        value={filters}
-                        onChange={(patch) => {
-                            const next = { ...filters, ...patch };
-                            setFilters(next);
-
-                        }}
-                        cities={[]}
-                        sources={[]}
-                        statuses={[]}
-                        companies={[]}
-                        total={0}
-                    />
-                </div>
-
-                <div className="mt-8">
-                    <ReservationsTable />
-                </div>
 
                 <Modal
                     open={confirmMultiOpen}

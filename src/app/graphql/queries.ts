@@ -6,6 +6,7 @@ export const GET_ALL_RESERVATIONS = gql`
             count
             items {
                 uuid
+                type
                 status
                 note
                 notificationId
@@ -22,47 +23,52 @@ export const GET_ALL_RESERVATIONS = gql`
                     minPartySize
                 }
                 restaurant { uuid name timezone }
+                member {                         
+                    firstName
+                    lastName
+                    email
+                    phone
+                }
             }
         }
     }
-`;
+`
 
 export const GET_ADMIN_RESERVATIONS = gql`
-  query AdminReservations($uuid: String, $from: String, $to: String, $limit: Int!, $offset: Int!) {
-    reservations(
-      uuid: $uuid
-      search: { from: $from, to: $to }
-      pagination: { limit: $limit, offset: $offset }
-    ) {
-      count
-      items {
-        uuid
-        status
-        note
-        notificationId
-        createdAt
-        updatedAt
-        date { start end expiry }
-        table {
-          label
-          type
-          location
-          recommendedPartySize
-          reservedPartySize
-          maxPartySize
-          minPartySize
+    query AdminReservations($uuid: String, $from: String, $to: String, $limit: Int!, $offset: Int!) {
+        reservations(
+            uuid: $uuid
+            search: { from: $from, to: $to }
+            pagination: { limit: $limit, offset: $offset }
+        ) {
+            count
+            items {
+                uuid
+                status
+                note
+                notificationId
+                createdAt
+                updatedAt
+                date { start end expiry }
+                table {
+                    label
+                    type
+                    location
+                    recommendedPartySize
+                    reservedPartySize
+                    maxPartySize
+                    minPartySize
+                }
+                restaurant { uuid name timezone }
+                member {                        
+                    uuid
+                    username
+                    firstName
+                    lastName
+                    email
+                    phone
+                }
+            }
         }
-        restaurant { uuid name timezone }
-        credit { amount }
-        member {
-          uuid
-          username
-          firstName
-          lastName
-          email
-          phone
-        }
-      }
     }
-  }
-`;
+`

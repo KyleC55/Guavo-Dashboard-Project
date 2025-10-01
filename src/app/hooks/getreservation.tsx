@@ -70,7 +70,6 @@ export function useAllReservations(initialLimit = 25) {
     };
 }
 
-/** —— admin/per-restaurant hook (unchanged shape) —— */
 export type AdminReservationsVars = {
     uuid?: string;
     from?: string;

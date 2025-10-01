@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from "react";
 import { useAllReservations, type GqlReservation } from "../hooks/getreservation.tsx";
 import Modal from "./modal.tsx";
+
 type ReservationRow = GqlReservation & { type?: string | null };
 
 const toDate = (ms?: string | null) => (ms ? new Date(Number(ms)) : null);
@@ -43,13 +44,15 @@ const STATUS_DESCRIPTIONS: Record<string, string> = {
     CANCEL_PENDING: "For event space reservation & PDR.",
     RESERVATION_PENDING: "For manual booking.",
 };
+
+/** Single-size status pill; never wraps */
 function StatusPill({ status }: { status: string }) {
     const color = STATUS_COLORS[status] ?? "bg-gray-200 text-gray-800";
     const label = STATUS_LABELS[status] ?? status;
     const desc = STATUS_DESCRIPTIONS[status] ?? "—";
     return (
         <span
-            className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${color}`}
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap leading-none ${color}`}
             title={desc}
             aria-label={`${label}: ${desc}`}
         >
@@ -116,18 +119,59 @@ const EyeIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+/** UUID: first 5 + Copy below to save width */
+function CopyableUuid({ uuid }: { uuid?: string }) {
+    const [copied, setCopied] = useState(false);
+    if (!uuid) return <span className="text-gray-500">—</span>;
+    const short = `${uuid.slice(0, 5)}…`;
+    const doCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(uuid);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+        } catch { /* no-op */ }
+    };
+    return (
+        <div className="flex flex-col items-start gap-1">
+      <span className="font-mono" title={uuid} aria-label={`UUID ${uuid}`}>
+        {short}
+      </span>
+            <button
+                type="button"
+                onClick={doCopy}
+                className="text-[10px] rounded border px-1.5 py-0.5 hover:bg-gray-50"
+                aria-label="Copy full UUID"
+                title="Copy full UUID"
+            >
+                {copied ? "Copied" : "Copy"}
+            </button>
+        </div>
+    );
+}
+
+/** Helper to safely read org names across shapes & aliases */
+function getOrgName(r: any, key: "team" | "company" | "corporation"): string | null {
+    // direct on reservation
+    if (r?.[key]?.name) return r[key].name as string;
+
+    // from restaurant
+    if (r?.restaurant?.[key]?.name) return r.restaurant[key].name as string;
+
+    // from member
+    if (r?.member?.[key]?.name) return r.member[key].name as string;
+
+    return null;
+}
+
 function ReservationDetails({ r }: { r: ReservationRow }) {
     const startStr = fmt(toDate(r?.date?.start));
-
     const partyNum =
-        r?.table?.reservedPartySize ??
-        r?.table?.recommendedPartySize ??
-        r?.table?.minPartySize;
+        r?.table?.reservedPartySize ?? r?.table?.recommendedPartySize ?? r?.table?.minPartySize;
     const hasParty = typeof partyNum === "number";
     const partyLabel = hasParty ? String(partyNum) : "—";
-
-    const fullName =
-        [r?.member?.firstName, r?.member?.lastName].filter(Boolean).join(" ").trim() || "—";
+    const fullName = [r?.member?.firstName, r?.member?.lastName].filter(Boolean).join(" ").trim() || "—";
+    const email = r?.member?.email ?? "—";
+    const isPending = r?.status === "RESERVATION_PENDING" || r?.status === "CANCEL_PENDING";
 
     return (
         <div className="space-y-6">
@@ -137,9 +181,17 @@ function ReservationDetails({ r }: { r: ReservationRow }) {
                 {startStr}
             </div>
 
-            <div className="flex gap-2">
-                <button className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium">Details</button>
-                <button className="rounded-full px-3 py-1 text-sm text-gray-500 hover:bg-gray-50">History</button>
+            {/* Buttons row */}
+            <div className="flex items-center justify-between">
+                <div className="flex gap-2">
+                    <button className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium">Details</button>
+                    <button className="rounded-full px-3 py-1 text-sm text-gray-500 hover:bg-gray-50">History</button>
+                </div>
+                {isPending && (
+                    <div className="shrink-0 whitespace-nowrap">
+                        <StatusPill status={r.status} />
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -151,8 +203,10 @@ function ReservationDetails({ r }: { r: ReservationRow }) {
 
                 <div>
                     <div className="text-sm text-gray-500">Booker</div>
-                    <div className="font-medium">{fullName}</div>
-                    <div className="text-sm text-blue-700">{r?.member?.email ?? "—"}</div>
+                    <div className="leading-tight">
+                        <div className="font-medium">{fullName}</div>
+                        <div className="text-xs text-blue-700">{email}</div>
+                    </div>
                 </div>
 
                 <div>
@@ -167,15 +221,9 @@ function ReservationDetails({ r }: { r: ReservationRow }) {
                     <div className="font-medium">{startStr}</div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div>
-                        <div className="text-sm text-gray-500">Status</div>
-                        <StatusPill status={r?.status} />
-                    </div>
-                    <div>
-                        <div className="text-sm text-gray-500">Source</div>
-                        <SourcePill value={r.type ?? null} />
-                    </div>
+                <div>
+                    <div className="text-sm text-gray-500">Source</div>
+                    <SourcePill value={r.type ?? null} />
                 </div>
 
                 <div className="sm:col-span-2">
@@ -189,7 +237,7 @@ function ReservationDetails({ r }: { r: ReservationRow }) {
     );
 }
 
-// ---------------- main table ----------------
+//  main table
 export default function ReservationsTable() {
     const {
         rows,
@@ -283,27 +331,26 @@ export default function ReservationsTable() {
                             />
                         </th>
                         <th className="text-left p-3">Start</th>
-                        <th className="text-left p-3">End</th>
+                        <th className="text-left p-3">UUID</th>
                         <th className="text-left p-3">Restaurant</th>
                         <th className="text-left p-3">Name</th>
+                        <th className="text-left p-3">Team</th>
+                        <th className="text-left p-3">Company</th>
                         <th className="text-left p-3">Table</th>
                         <th className="text-left p-3">Party</th>
                         <th className="text-left p-3">Status</th>
                         <th className="text-left p-3">Source</th>
-                        <th className="text-left p-3 w-20">Actions</th>
+                        <th className="text-left p-3 w-32">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
                     {loading && rows.length === 0 ? (
-                        <tr><td className="p-3" colSpan={11}>Loading…</td></tr>
+                        <tr><td className="p-3" colSpan={12}>Loading…</td></tr>
                     ) : rows.length === 0 ? (
-                        <tr><td className="p-3" colSpan={11}>No reservations found.</td></tr>
+                        <tr><td className="p-3" colSpan={12}>No reservations found.</td></tr>
                     ) : (
                         rows.map((r: ReservationRow) => {
                             const start = fmt(toDate(r.date?.start));
-                            const end = fmt(toDate(r.date?.end));
-
-                            // ✅ TS-safe party display
                             const partyNum =
                                 r.table?.reservedPartySize ??
                                 r.table?.recommendedPartySize ??
@@ -313,7 +360,18 @@ export default function ReservationsTable() {
 
                             const fullName =
                                 [r.member?.firstName, r.member?.lastName].filter(Boolean).join(" ").trim() || "—";
+                            const email = r.member?.email ?? "";
                             const isChecked = selected.has(r.uuid);
+
+                            // Team / Company with corporation fallback
+                            const teamLabel =
+                                getOrgName(r, "team") ?? "—";
+                            const companyLabel =
+                                getOrgName(r, "company") ??
+                                getOrgName(r, "corporation") ?? "—";
+
+                            const tableType = r.table?.type ?? "—";
+                            const tableLoc = r.table?.location ?? "—";
 
                             return (
                                 <tr key={r.uuid} className="border-t">
@@ -326,34 +384,57 @@ export default function ReservationsTable() {
                                             aria-label={`Select ${r.uuid}`}
                                         />
                                     </td>
+
                                     <td className="p-3 whitespace-nowrap">{start}</td>
-                                    <td className="p-3 whitespace-nowrap">{end}</td>
+
+                                    <td className="p-3"><CopyableUuid uuid={r.uuid} /></td>
+
                                     <td className="p-3">
                                         <div className="font-medium">{r.restaurant?.name ?? "—"}</div>
                                         <div className="text-xs text-gray-500">{prettyTz(r.restaurant?.timezone)}</div>
                                     </td>
-                                    <td className="p-3">{fullName}</td>
+
                                     <td className="p-3">
-                                        {/* show only the table type, not the label code */}
-                                        <div>{r.table?.type ?? "—"}</div>
-                                        <div className="text-xs text-gray-500">{r.table?.location ?? "—"}</div>
+                                        <div className="leading-tight">
+                                            <div className="font-medium">{fullName}</div>
+                                            {email && <div className="text-xs text-blue-700">{email}</div>}
+                                        </div>
                                     </td>
-                                    <td className="p-3">{partyLabel}</td>
+
+                                    <td className="p-3">{teamLabel}</td>
+                                    <td className="p-3">{companyLabel}</td>
+
+                                    {/* TABLE */}
                                     <td className="p-3">
+                                        <div className="leading-tight">
+                                            <div className="font-medium capitalize">{tableType}</div>
+                                            <div className="text-xs text-gray-600 whitespace-nowrap">{tableLoc}</div>
+                                        </div>
+                                    </td>
+
+                                    <td className="p-3">{partyLabel}</td>
+
+                                    {/* Status: force one line */}
+                                    <td className="p-3 whitespace-nowrap">
                                         <StatusPill status={r.status} />
                                     </td>
+
                                     <td className="p-3">
                                         <SourcePill value={r.type ?? null} />
                                     </td>
+
+                                    {/* Actions only */}
                                     <td className="p-3">
-                                        <button
-                                            className="inline-flex items-center justify-center rounded-md border px-2 py-1 hover:bg-gray-50"
-                                            title="View"
-                                            aria-label="View"
-                                            onClick={() => openDetails(r)}
-                                        >
-                                            <EyeIcon className="h-4 w-4" />
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                className="inline-flex items-center justify-center rounded-md border px-2 py-1 hover:bg-gray-50"
+                                                title="View"
+                                                aria-label="View"
+                                                onClick={() => openDetails(r)}
+                                            >
+                                                <EyeIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             );
@@ -363,7 +444,7 @@ export default function ReservationsTable() {
                 </table>
             </div>
 
-            {/* Footer (pagination) */}
+            {/* Footer */}
             <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">Showing {rows.length} of {count}</div>
                 <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../components/sidebar.tsx";
 import Search from "../components/searchbar.tsx";
 import { ProfileCard } from "../components/profilecard.tsx";
@@ -11,10 +11,16 @@ import MetricsBar from "../components/metricsbar.tsx";
 import BookingFilters from "../components/bookingfilters.tsx";
 import type { BookingFilterState } from "../../../types/types.ts";
 
+// Shape expected by ManualBookingForm combobox (structurally typed)
+type RestaurantOption = { value: string; label: string; meta?: string };
+
 const Bookings = () => {
     const [manualOpen, setManualOpen] = useState(false);
 
-    const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+    const [toast, setToast] = useState<{
+        type: "success" | "error";
+        message: string;
+    } | null>(null);
 
     const [confirmMultiOpen, setConfirmMultiOpen] = useState(false);
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -32,8 +38,45 @@ const Bookings = () => {
         total: 0,
     });
 
+    // ---- Restaurants from API for ManualBookingForm ----
+    const [restaurantOptions, setRestaurantOptions] = useState<RestaurantOption[]>(
+        []
+    );
+    const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                setRestaurantsLoading(true);
+                // TODO: replace with your real endpoint
+                const res = await fetch("/api/restaurants");
+                if (!res.ok) throw new Error("Failed to load restaurants");
+                const data = await res.json(); // [{id, name, neighborhood, ...}]
+                if (cancelled) return;
+                const options: RestaurantOption[] = (Array.isArray(data) ? data : []).map(
+                    (r: any) => ({
+                        value: String(r.id ?? r._id ?? r.slug ?? r.name),
+                        label: String(r.name ?? "Unnamed"),
+                        meta: r.neighborhood ? String(r.neighborhood) : undefined,
+                    })
+                );
+                setRestaurantOptions(options);
+            } catch (e) {
+                console.error(e);
+                setRestaurantOptions([]);
+            } finally {
+                if (!cancelled) setRestaurantsLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     const handleCreate = (data: any) => {
         try {
+            // perform your create call here if needed
             setManualOpen(false);
             setToast({ type: "success", message: "Booking successfully created ✅" });
             setTimeout(() => setToast(null), 3000);
@@ -92,6 +135,7 @@ const Bookings = () => {
                     <ReservationsTable />
                 </div>
 
+                {/* Manual Booking Modal */}
                 <Modal
                     open={manualOpen}
                     onClose={() => setManualOpen(false)}
@@ -116,9 +160,15 @@ const Bookings = () => {
                         </>
                     }
                 >
-                    <ManualBookingForm onCreate={handleCreate} onDone={() => setManualOpen(false)} />
+                    <ManualBookingForm
+                        onCreate={handleCreate}
+                        onDone={() => setManualOpen(false)}
+                        restaurantOptions={restaurantOptions}
+                        restaurantsLoading={restaurantsLoading}
+                    />
                 </Modal>
 
+                {/* Other modals (unchanged) */}
                 <Modal
                     open={confirmMultiOpen}
                     onClose={() => setConfirmMultiOpen(false)}
@@ -126,7 +176,9 @@ const Bookings = () => {
                     showCloseButton={false}
                 >
                     <div className="space-y-6">
-                        <p className="text-gray-600">Bulk actions are not wired to the new table yet.</p>
+                        <p className="text-gray-600">
+                            Bulk actions are not wired to the new table yet.
+                        </p>
                         <div className="flex justify-end gap-3">
                             <button
                                 type="button"
@@ -146,7 +198,9 @@ const Bookings = () => {
                     showCloseButton={false}
                 >
                     <div className="space-y-6">
-                        <p className="text-gray-600">Delete is not wired to the new table yet.</p>
+                        <p className="text-gray-600">
+                            Delete is not wired to the new table yet.
+                        </p>
                         <div className="flex justify-end gap-3">
                             <button
                                 type="button"

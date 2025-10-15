@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["DOM", "ES2020"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "preserve",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "plugins": [{ "name": "next" }]
+  },
+  "include": ["next-env.d.ts", "src", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}

@@ -2,7 +2,11 @@ import React, { useMemo, useRef, useEffect, useState } from "react";
 import { useAllReservations, type GqlReservation } from "../hooks/getreservation.tsx";
 import Modal from "./modal.tsx";
 
-type ReservationRow = GqlReservation & { type?: string | null };
+type ReservationRow = GqlReservation & {
+    type?: string | null;
+    teamName?: string | null;
+    corporate?: { uuid?: string; name?: string | null } | null;
+};
 
 const toDate = (ms?: string | null) => (ms ? new Date(Number(ms)) : null);
 const fmt = (d?: Date | null) => (d ? d.toLocaleString() : "—");
@@ -45,7 +49,6 @@ const STATUS_DESCRIPTIONS: Record<string, string> = {
     RESERVATION_PENDING: "For manual booking.",
 };
 
-/** Single-size status pill; never wraps */
 function StatusPill({ status }: { status: string }) {
     const color = STATUS_COLORS[status] ?? "bg-gray-200 text-gray-800";
     const label = STATUS_LABELS[status] ?? status;
@@ -56,8 +59,8 @@ function StatusPill({ status }: { status: string }) {
             title={desc}
             aria-label={`${label}: ${desc}`}
         >
-      {label}
-    </span>
+            {label}
+        </span>
     );
 }
 
@@ -75,8 +78,8 @@ function SourcePill({ value }: { value?: string | null }) {
     if (!value) {
         return (
             <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-200">
-        —
-      </span>
+                —
+            </span>
         );
     }
     const label = SOURCE_LABELS[value] ?? value;
@@ -129,13 +132,15 @@ function CopyableUuid({ uuid }: { uuid?: string }) {
             await navigator.clipboard.writeText(uuid);
             setCopied(true);
             setTimeout(() => setCopied(false), 1200);
-        } catch { /* no-op */ }
+        } catch {
+            /* no-op */
+        }
     };
     return (
         <div className="flex flex-col items-start gap-1">
-      <span className="font-mono" title={uuid} aria-label={`UUID ${uuid}`}>
-        {short}
-      </span>
+            <span className="font-mono" title={uuid} aria-label={`UUID ${uuid}`}>
+                {short}
+            </span>
             <button
                 type="button"
                 onClick={doCopy}
@@ -149,24 +154,9 @@ function CopyableUuid({ uuid }: { uuid?: string }) {
     );
 }
 
-/** Helper to safely read org names across shapes & aliases */
-function getOrgName(r: any, key: "team" | "company" | "corporation"): string | null {
-    // direct on reservation
-    if (r?.[key]?.name) return r[key].name as string;
-
-    // from restaurant
-    if (r?.restaurant?.[key]?.name) return r.restaurant[key].name as string;
-
-    // from member
-    if (r?.member?.[key]?.name) return r.member[key].name as string;
-
-    return null;
-}
-
 function ReservationDetails({ r }: { r: ReservationRow }) {
     const startStr = fmt(toDate(r?.date?.start));
-    const partyNum =
-        r?.table?.reservedPartySize ?? r?.table?.recommendedPartySize ?? r?.table?.minPartySize;
+    const partyNum = r?.table?.reservedPartySize ?? r?.table?.recommendedPartySize ?? r?.table?.minPartySize;
     const hasParty = typeof partyNum === "number";
     const partyLabel = hasParty ? String(partyNum) : "—";
     const fullName = [r?.member?.firstName, r?.member?.lastName].filter(Boolean).join(" ").trim() || "—";
@@ -228,9 +218,7 @@ function ReservationDetails({ r }: { r: ReservationRow }) {
 
                 <div className="sm:col-span-2">
                     <div className="text-sm text-gray-500 mb-1">Notes</div>
-                    <div className="rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                        {r?.note?.trim() || "—"}
-                    </div>
+                    <div className="rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">{r?.note?.trim() || "—"}</div>
                 </div>
             </div>
         </div>
@@ -239,19 +227,8 @@ function ReservationDetails({ r }: { r: ReservationRow }) {
 
 //  main table
 export default function ReservationsTable() {
-    const {
-        rows,
-        count,
-        loading,
-        error,
-        refetch,
-        limit,
-        offset,
-        setLimit,
-        setOffset,
-        canPrev,
-        canNext,
-    } = useAllReservations(25);
+    const { rows, count, loading, error, refetch, limit, offset, setLimit, setOffset, canPrev, canNext } =
+        useAllReservations(25);
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
     useEffect(() => setSelected(new Set()), [limit, offset, rows.length]);
@@ -311,11 +288,7 @@ export default function ReservationsTable() {
                 </div>
             )}
 
-            {error && (
-                <div className="rounded border border-red-300 bg-red-50 p-3 text-red-700">
-                    {error.message}
-                </div>
-            )}
+            {error && <div className="rounded border border-red-300 bg-red-50 p-3 text-red-700">{error.message}</div>}
 
             {/* Table */}
             <div className="rounded-xl border overflow-auto">
@@ -345,16 +318,22 @@ export default function ReservationsTable() {
                     </thead>
                     <tbody>
                     {loading && rows.length === 0 ? (
-                        <tr><td className="p-3" colSpan={12}>Loading…</td></tr>
+                        <tr>
+                            <td className="p-3" colSpan={12}>
+                                Loading…
+                            </td>
+                        </tr>
                     ) : rows.length === 0 ? (
-                        <tr><td className="p-3" colSpan={12}>No reservations found.</td></tr>
+                        <tr>
+                            <td className="p-3" colSpan={12}>
+                                No reservations found.
+                            </td>
+                        </tr>
                     ) : (
                         rows.map((r: ReservationRow) => {
                             const start = fmt(toDate(r.date?.start));
                             const partyNum =
-                                r.table?.reservedPartySize ??
-                                r.table?.recommendedPartySize ??
-                                r.table?.minPartySize;
+                                r.table?.reservedPartySize ?? r.table?.recommendedPartySize ?? r.table?.minPartySize;
                             const hasParty = typeof partyNum === "number";
                             const partyLabel = hasParty ? String(partyNum) : "—";
 
@@ -363,12 +342,9 @@ export default function ReservationsTable() {
                             const email = r.member?.email ?? "";
                             const isChecked = selected.has(r.uuid);
 
-                            // Team / Company with corporation fallback
-                            const teamLabel =
-                                getOrgName(r, "team") ?? "—";
-                            const companyLabel =
-                                getOrgName(r, "company") ??
-                                getOrgName(r, "corporation") ?? "—";
+                            // Use API fields directly
+                            const teamLabel = r.teamName ?? "—";
+                            const companyLabel = r.corporate?.name ?? "—";
 
                             const tableType = r.table?.type ?? "—";
                             const tableLoc = r.table?.location ?? "—";
@@ -387,7 +363,9 @@ export default function ReservationsTable() {
 
                                     <td className="p-3 whitespace-nowrap">{start}</td>
 
-                                    <td className="p-3"><CopyableUuid uuid={r.uuid} /></td>
+                                    <td className="p-3">
+                                        <CopyableUuid uuid={r.uuid} />
+                                    </td>
 
                                     <td className="p-3">
                                         <div className="font-medium">{r.restaurant?.name ?? "—"}</div>
@@ -401,8 +379,25 @@ export default function ReservationsTable() {
                                         </div>
                                     </td>
 
-                                    <td className="p-3">{teamLabel}</td>
-                                    <td className="p-3">{companyLabel}</td>
+                                    {/* Team: force single line + ellipsis */}
+                                    <td className="p-3">
+                                        <div
+                                            className="max-w-[180px] whitespace-nowrap overflow-hidden text-ellipsis"
+                                            title={teamLabel}
+                                        >
+                                            {teamLabel}
+                                        </div>
+                                    </td>
+
+                                    {/* Company: force single line + ellipsis */}
+                                    <td className="p-3">
+                                        <div
+                                            className="max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis"
+                                            title={companyLabel}
+                                        >
+                                            {companyLabel}
+                                        </div>
+                                    </td>
 
                                     {/* TABLE */}
                                     <td className="p-3">
@@ -446,7 +441,9 @@ export default function ReservationsTable() {
 
             {/* Footer */}
             <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">Showing {rows.length} of {count}</div>
+                <div className="text-sm text-gray-600">
+                    Showing {rows.length} of {count}
+                </div>
                 <div className="flex items-center gap-2">
                     <button
                         className="rounded px-3 py-2 border"
@@ -469,13 +466,7 @@ export default function ReservationsTable() {
             <Modal
                 open={open}
                 onClose={() => setOpen(false)}
-                title={
-                    current && (
-                        <div className="text-xl font-semibold">
-                            Booking Details — {current.uuid}
-                        </div>
-                    )
-                }
+                title={current && <div className="text-xl font-semibold">Booking Details — {current.uuid}</div>}
                 showCloseButton
             >
                 {current ? <ReservationDetails r={current} /> : null}

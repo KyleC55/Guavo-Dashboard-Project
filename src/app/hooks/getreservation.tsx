@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@apollo/client/react';
+import { useQuery } from "@apollo/client/react";
 import { GET_ALL_RESERVATIONS, GET_ADMIN_RESERVATIONS } from '../graphql/queries';
 
 export type EpochMsString = string;
@@ -41,11 +41,35 @@ export interface GqlReservation {
     member?: GqlMember | null;
 }
 
-export function useAllReservations(initialLimit = 25) {
+export type CorporateScope = {
+    corporationUuid?: string | null;
+    teamUuid?: string | null; // if you have team-level tenancy
+};
+
+export function useAllReservations(
+    initialLimit = 25,
+    scope: CorporateScope = {}
+) {
     const [limit, setLimit] = useState(initialLimit);
     const [offset, setOffset] = useState(0);
 
-    const variables = useMemo(() => ({ limit, offset }), [limit, offset]);
+    // When filters/scope change, snap pagination back to page 1
+    const setLimitAndReset = useCallback((n: number) => {
+        setOffset(0);
+        setLimit(n);
+    }, []);
+
+    const variables = useMemo(
+        () => ({
+            limit,
+            offset,
+            // 👇 Add corporate/team scoping if your schema supports these variables.
+            corporationUuid: scope.corporationUuid ?? undefined,
+            teamUuid: scope.teamUuid ?? undefined,
+        }),
+        [limit, offset, scope.corporationUuid, scope.teamUuid]
+    );
+
     const { data, loading, error, refetch } = useQuery<{
         allReservations: { count: number; items: GqlReservation[] }
     }>(GET_ALL_RESERVATIONS, {
@@ -60,29 +84,63 @@ export function useAllReservations(initialLimit = 25) {
     const canPrev = offset > 0;
     const canNext = offset + limit < count;
 
-    const updateLimit = useCallback((n: number) => { setOffset(0); setLimit(n); }, []);
-
     return {
-        rows, count, loading, error, refetch,
-        limit, offset, setOffset,
-        setLimit: updateLimit,
-        canPrev, canNext,
+        rows,
+        count,
+        loading,
+        error,
+        refetch,
+        limit,
+        offset,
+        setOffset,
+        setLimit: setLimitAndReset,
+        canPrev,
+        canNext,
     };
 }
 
 export type AdminReservationsVars = {
-    uuid?: string;
-    from?: string;
+    uuid?: string;          // reservation uuid filter
+    from?: string;          // epoch ms string or ISO, per your schema
     to?: string;
     limit: number;
     offset: number;
+    // 👇 NEW for corporate tenancy
+    corporationUuid?: string | null;
+    teamUuid?: string | null;
+    // Optional extra filters you might want later:
+    statusIn?: string[];
+    restaurantUuid?: string;
 };
 
-export function useAdminReservations(variables: AdminReservationsVars) {
+export function useAdminReservations(input: AdminReservationsVars) {
+    // Snap pagination when filters change (except offset/limit themselves)
+    const stableVars = useMemo(() => ({
+        uuid: input.uuid,
+        from: input.from,
+        to: input.to,
+        limit: input.limit,
+        offset: input.offset,
+        corporationUuid: input.corporationUuid ?? undefined,
+        teamUuid: input.teamUuid ?? undefined,
+        statusIn: input.statusIn ?? undefined,
+        restaurantUuid: input.restaurantUuid ?? undefined,
+    }), [
+        input.uuid,
+        input.from,
+        input.to,
+        input.limit,
+        input.offset,
+        input.corporationUuid,
+        input.teamUuid,
+        input.statusIn,
+        input.restaurantUuid,
+    ]);
+
     const { data, loading, error, refetch } = useQuery<{
         reservations: { count: number; items: GqlReservation[] }
     }>(GET_ADMIN_RESERVATIONS, {
-        variables,
+        variables: stableVars,
         fetchPolicy: 'network-only',
     });
 

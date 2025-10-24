@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from "react";
-import { useAllReservations, type GqlReservation } from "../hooks/getreservation.tsx";
-import Modal from "./modal.tsx";
+import { useAllReservations, type GqlReservation } from "../hooks/getreservation";
+import Modal from "./modal";
 
 type ReservationRow = GqlReservation & {
     type?: string | null;
@@ -9,14 +9,18 @@ type ReservationRow = GqlReservation & {
 };
 
 const toDate = (ms?: string | null) => (ms ? new Date(Number(ms)) : null);
-const fmt = (d?: Date | null) => (d ? d.toLocaleString() : "—");
-
-const prettyTz = (tz?: string | null) => {
-    if (!tz) return "—";
-    const leaf = tz.includes("/") ? tz.split("/").pop()! : tz;
-    const spaced = leaf.replace(/_/g, " ");
-    return spaced.replace(/\b\w/g, (c) => c.toUpperCase());
+const fmtShort = (d?: Date | null) => {
+    if (!d) return "—";
+    return d.toLocaleString(undefined, {
+        month: "numeric",
+        day: "numeric",
+        year: "2-digit",
+        hour: "numeric",
+        minute: "2-digit",
+    });
 };
+const prettyTz = (tz?: string | null) =>
+    tz ? tz.split("/").pop()?.replace(/_/g, " ") ?? "—" : "—";
 
 const STATUS_COLORS: Record<string, string> = {
     LISTED: "bg-gray-200 text-gray-700",
@@ -38,29 +42,15 @@ const STATUS_LABELS: Record<string, string> = {
     CANCEL_PENDING: "Cancel Pending",
     RESERVATION_PENDING: "Pending (Manual)",
 };
-const STATUS_DESCRIPTIONS: Record<string, string> = {
-    LISTED: "Redundant.",
-    RESERVED: "Booked with keys.",
-    FREE_BOOKED: "Free booked by admin; no keys charged or charge back.",
-    CASH_BOOKED: "Booked with cash.",
-    CANCELED: "Problematic.",
-    RELEASED: "Expired for all systems.",
-    CANCEL_PENDING: "For event space reservation & PDR.",
-    RESERVATION_PENDING: "For manual booking.",
-};
-
 function StatusPill({ status }: { status: string }) {
     const color = STATUS_COLORS[status] ?? "bg-gray-200 text-gray-800";
     const label = STATUS_LABELS[status] ?? status;
-    const desc = STATUS_DESCRIPTIONS[status] ?? "—";
     return (
         <span
             className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap leading-none ${color}`}
-            title={desc}
-            aria-label={`${label}: ${desc}`}
         >
-            {label}
-        </span>
+      {label}
+    </span>
     );
 }
 
@@ -75,16 +65,22 @@ const SOURCE_STYLES: Record<string, string> = {
     MANUAL: "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200",
 };
 function SourcePill({ value }: { value?: string | null }) {
-    if (!value) {
+    if (!value)
         return (
             <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-200">
-                —
-            </span>
+        —
+      </span>
         );
-    }
     const label = SOURCE_LABELS[value] ?? value;
-    const style = SOURCE_STYLES[value] ?? "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200";
-    return <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${style}`}>{label}</span>;
+    const style =
+        SOURCE_STYLES[value] ?? "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200";
+    return (
+        <span
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap ${style}`}
+        >
+      {label}
+    </span>
+    );
 }
 
 function HeaderCheckbox({
@@ -122,8 +118,8 @@ const EyeIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-/** UUID: first 5 + Copy below to save width */
-function CopyableUuid({ uuid }: { uuid?: string }) {
+/** Small UUID display with Copy button */
+function CopyableUuid({ uuid }: { uuid?: string | null }) {
     const [copied, setCopied] = useState(false);
     if (!uuid) return <span className="text-gray-500">—</span>;
     const short = `${uuid.slice(0, 5)}…`;
@@ -133,19 +129,18 @@ function CopyableUuid({ uuid }: { uuid?: string }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 1200);
         } catch {
-            /* no-op */
+            /* ignore */
         }
     };
     return (
         <div className="flex flex-col items-start gap-1">
-            <span className="font-mono" title={uuid} aria-label={`UUID ${uuid}`}>
-                {short}
-            </span>
+      <span className="font-mono" title={uuid}>
+        {short}
+      </span>
             <button
                 type="button"
                 onClick={doCopy}
                 className="text-[10px] rounded border px-1.5 py-0.5 hover:bg-gray-50"
-                aria-label="Copy full UUID"
                 title="Copy full UUID"
             >
                 {copied ? "Copied" : "Copy"}
@@ -154,88 +149,29 @@ function CopyableUuid({ uuid }: { uuid?: string }) {
     );
 }
 
-function ReservationDetails({ r }: { r: ReservationRow }) {
-    const startStr = fmt(toDate(r?.date?.start));
-    const partyNum = r?.table?.reservedPartySize ?? r?.table?.recommendedPartySize ?? r?.table?.minPartySize;
-    const hasParty = typeof partyNum === "number";
-    const partyLabel = hasParty ? String(partyNum) : "—";
-    const fullName = [r?.member?.firstName, r?.member?.lastName].filter(Boolean).join(" ").trim() || "—";
-    const email = r?.member?.email ?? "—";
-    const isPending = r?.status === "RESERVATION_PENDING" || r?.status === "CANCEL_PENDING";
-
-    return (
-        <div className="space-y-6">
-            <div className="text-sm text-gray-600">
-                <span className="text-blue-700">{r?.restaurant?.name ?? "—"}</span>
-                <span className="mx-2">•</span>
-                {startStr}
-            </div>
-
-            {/* Buttons row */}
-            <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                    <button className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium">Details</button>
-                    <button className="rounded-full px-3 py-1 text-sm text-gray-500 hover:bg-gray-50">History</button>
-                </div>
-                {isPending && (
-                    <div className="shrink-0 whitespace-nowrap">
-                        <StatusPill status={r.status} />
-                    </div>
-                )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                    <div className="text-sm text-gray-500">Venue</div>
-                    <div className="font-medium">{r?.restaurant?.name ?? "—"}</div>
-                    <div className="text-xs text-gray-500">{prettyTz(r?.restaurant?.timezone)}</div>
-                </div>
-
-                <div>
-                    <div className="text-sm text-gray-500">Booker</div>
-                    <div className="leading-tight">
-                        <div className="font-medium">{fullName}</div>
-                        <div className="text-xs text-blue-700">{email}</div>
-                    </div>
-                </div>
-
-                <div>
-                    <div className="text-sm text-gray-500">Party Size</div>
-                    <div className="font-medium">
-                        {partyLabel} {hasParty ? "guests" : ""}
-                    </div>
-                </div>
-
-                <div>
-                    <div className="text-sm text-gray-500">Date &amp; Time</div>
-                    <div className="font-medium">{startStr}</div>
-                </div>
-
-                <div>
-                    <div className="text-sm text-gray-500">Source</div>
-                    <SourcePill value={r.type ?? null} />
-                </div>
-
-                <div className="sm:col-span-2">
-                    <div className="text-sm text-gray-500 mb-1">Notes</div>
-                    <div className="rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">{r?.note?.trim() || "—"}</div>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-//  main table
 export default function ReservationsTable() {
-    const { rows, count, loading, error, refetch, limit, offset, setLimit, setOffset, canPrev, canNext } =
-        useAllReservations(25);
+    // Prefixing unused values with "_" since the header was removed.
+    const {
+        rows,
+        count: _count,
+        loading: _loading,
+        error: _error,
+        refetch: _refetch,
+        limit: _limit,
+        offset: _offset,
+        setLimit: _setLimit,
+        setOffset: _setOffset,
+        canPrev: _canPrev,
+        canNext: _canNext,
+    } = useAllReservations(25);
 
     const [selected, setSelected] = useState<Set<string>>(new Set());
-    useEffect(() => setSelected(new Set()), [limit, offset, rows.length]);
+    const [open, setOpen] = useState(false);
+    const [current, setCurrent] = useState<ReservationRow | null>(null);
+
     const pageIds = useMemo(() => rows.map((r) => r.uuid), [rows]);
-    const selectedOnPage = useMemo(() => pageIds.filter((id) => selected.has(id)), [pageIds, selected]);
-    const allOnPageSelected = selectedOnPage.length === pageIds.length && pageIds.length > 0;
-    const someOnPageSelected = selectedOnPage.length > 0 && !allOnPageSelected;
+    const allOnPageSelected = selected.size === pageIds.length && pageIds.length > 0;
+    const someOnPageSelected = selected.size > 0 && !allOnPageSelected;
 
     const toggleSelectAllOnPage = (next: boolean) => {
         const set = new Set(selected);
@@ -250,49 +186,12 @@ export default function ReservationsTable() {
         setSelected(set);
     };
 
-    const [open, setOpen] = useState<boolean>(false);
-    const [current, setCurrent] = useState<ReservationRow | null>(null);
-    const openDetails = (row: ReservationRow) => {
-        setCurrent(row);
-        setOpen(true);
-    };
-
     return (
         <div className="space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">All Reservations</h2>
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Rows:</label>
-                    <select
-                        className="border rounded px-2 py-1"
-                        value={limit}
-                        onChange={(e) => {
-                            setOffset(0);
-                            setLimit(Number(e.target.value));
-                        }}
-                    >
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                        <option value={100}>100</option>
-                    </select>
-                    <button className="rounded px-3 py-2 border" onClick={() => refetch()} disabled={loading}>
-                        Refresh
-                    </button>
-                </div>
-            </div>
+            {/* ⛔️ Removed the internal header bar on purpose */}
 
-            {selected.size > 0 && (
-                <div className="text-sm text-gray-700">
-                    Selected <strong>{selected.size}</strong> {selected.size === 1 ? "item" : "items"} — ready for Edit
-                </div>
-            )}
-
-            {error && <div className="rounded border border-red-300 bg-red-50 p-3 text-red-700">{error.message}</div>}
-
-            {/* Table */}
             <div className="rounded-xl border overflow-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
                     <thead className="bg-gray-50">
                     <tr>
                         <th className="p-3 w-10">
@@ -303,174 +202,111 @@ export default function ReservationsTable() {
                                 disabled={rows.length === 0}
                             />
                         </th>
-                        <th className="text-left p-3">Start</th>
+                        <th className="text-left p-3 whitespace-nowrap">Start</th>
                         <th className="text-left p-3">UUID</th>
                         <th className="text-left p-3">Restaurant</th>
                         <th className="text-left p-3">Name</th>
                         <th className="text-left p-3">Team</th>
                         <th className="text-left p-3">Company</th>
                         <th className="text-left p-3">Table</th>
-                        <th className="text-left p-3">Party</th>
-                        <th className="text-left p-3">Status</th>
-                        <th className="text-left p-3">Source</th>
-                        <th className="text-left p-3 w-32">Actions</th>
+                        <th className="text-center p-3">Party</th>
+                        <th className="text-center p-3">Status</th>
+                        <th className="text-center p-3">Source</th>
+                        <th className="text-center p-3">Actions</th>
                     </tr>
                     </thead>
                     <tbody>
-                    {loading && rows.length === 0 ? (
-                        <tr>
-                            <td className="p-3" colSpan={12}>
-                                Loading…
-                            </td>
-                        </tr>
-                    ) : rows.length === 0 ? (
-                        <tr>
-                            <td className="p-3" colSpan={12}>
-                                No reservations found.
-                            </td>
-                        </tr>
-                    ) : (
-                        rows.map((r: ReservationRow) => {
-                            const start = fmt(toDate(r.date?.start));
-                            const partyNum =
-                                r.table?.reservedPartySize ?? r.table?.recommendedPartySize ?? r.table?.minPartySize;
-                            const hasParty = typeof partyNum === "number";
-                            const partyLabel = hasParty ? String(partyNum) : "—";
+                    {rows.map((r) => {
+                        const start = fmtShort(toDate(r.date?.start));
+                        const fullName =
+                            [r.member?.firstName, r.member?.lastName].filter(Boolean).join(" ") || "—";
+                        const email = r.member?.email ?? "";
+                        const partyNum =
+                            r.table?.reservedPartySize ??
+                            r.table?.recommendedPartySize ??
+                            r.table?.minPartySize;
+                        const partyLabel = typeof partyNum === "number" ? String(partyNum) : "—";
 
-                            const fullName =
-                                [r.member?.firstName, r.member?.lastName].filter(Boolean).join(" ").trim() || "—";
-                            const email = r.member?.email ?? "";
-                            const isChecked = selected.has(r.uuid);
+                        return (
+                            <tr key={r.uuid} className="border-t">
+                                <td className="p-3">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        checked={selected.has(r.uuid)}
+                                        onChange={(e) => toggleOne(r.uuid, e.target.checked)}
+                                    />
+                                </td>
 
-                            // Use API fields directly
-                            const teamLabel = r.teamName ?? "—";
-                            const companyLabel = r.corporate?.name ?? "—";
+                                <td className="p-3 whitespace-nowrap font-mono text-sm">{start}</td>
 
-                            const tableType = r.table?.type ?? "—";
-                            const tableLoc = r.table?.location ?? "—";
+                                <td className="p-3">
+                                    <CopyableUuid uuid={r.uuid} />
+                                </td>
 
-                            return (
-                                <tr key={r.uuid} className="border-t">
-                                    <td className="p-3">
-                                        <input
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            checked={isChecked}
-                                            onChange={(e) => toggleOne(r.uuid, e.target.checked)}
-                                            aria-label={`Select ${r.uuid}`}
-                                        />
-                                    </td>
+                                <td className="p-3">
+                                    <div className="font-medium">{r.restaurant?.name ?? "—"}</div>
+                                    <div className="text-xs text-gray-500">{prettyTz(r.restaurant?.timezone)}</div>
+                                </td>
 
-                                    <td className="p-3 whitespace-nowrap">{start}</td>
+                                <td className="p-3">
+                                    <div className="font-medium">{fullName}</div>
+                                    {email && <div className="text-xs text-blue-700">{email}</div>}
+                                </td>
 
-                                    <td className="p-3">
-                                        <CopyableUuid uuid={r.uuid} />
-                                    </td>
+                                <td className="p-3 whitespace-nowrap">{r.teamName ?? "—"}</td>
+                                <td className="p-3 whitespace-nowrap">{r.corporate?.name ?? "—"}</td>
 
-                                    <td className="p-3">
-                                        <div className="font-medium">{r.restaurant?.name ?? "—"}</div>
-                                        <div className="text-xs text-gray-500">{prettyTz(r.restaurant?.timezone)}</div>
-                                    </td>
-
-                                    <td className="p-3">
-                                        <div className="leading-tight">
-                                            <div className="font-medium">{fullName}</div>
-                                            {email && <div className="text-xs text-blue-700">{email}</div>}
+                                {/* Table: two lines, location stays on single line */}
+                                <td className="p-3">
+                                    <div className="font-medium capitalize">{r.table?.type ?? "—"}</div>
+                                    {r.table?.location && (
+                                        <div className="text-xs text-gray-500 whitespace-nowrap">
+                                            {r.table.location}
                                         </div>
-                                    </td>
+                                    )}
+                                </td>
 
-                                    {/* Team: force single line + ellipsis */}
-                                    <td className="p-3">
-                                        <div
-                                            className="max-w-[180px] whitespace-nowrap overflow-hidden text-ellipsis"
-                                            title={teamLabel}
-                                        >
-                                            {teamLabel}
-                                        </div>
-                                    </td>
+                                <td className="p-3 text-center">{partyLabel}</td>
 
-                                    {/* Company: force single line + ellipsis */}
-                                    <td className="p-3">
-                                        <div
-                                            className="max-w-[200px] whitespace-nowrap overflow-hidden text-ellipsis"
-                                            title={companyLabel}
-                                        >
-                                            {companyLabel}
-                                        </div>
-                                    </td>
+                                <td className="p-3 text-center align-middle">
+                                    <StatusPill status={r.status} />
+                                </td>
 
-                                    {/* TABLE */}
-                                    <td className="p-3">
-                                        <div className="leading-tight">
-                                            <div className="font-medium capitalize">{tableType}</div>
-                                            <div className="text-xs text-gray-600 whitespace-nowrap">{tableLoc}</div>
-                                        </div>
-                                    </td>
+                                <td className="p-3 text-center align-middle">
+                                    <SourcePill value={r.type ?? null} />
+                                </td>
 
-                                    <td className="p-3">{partyLabel}</td>
-
-                                    {/* Status: force one line */}
-                                    <td className="p-3 whitespace-nowrap">
-                                        <StatusPill status={r.status} />
-                                    </td>
-
-                                    <td className="p-3">
-                                        <SourcePill value={r.type ?? null} />
-                                    </td>
-
-                                    {/* Actions only */}
-                                    <td className="p-3">
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                className="inline-flex items-center justify-center rounded-md border px-2 py-1 hover:bg-gray-50"
-                                                title="View"
-                                                aria-label="View"
-                                                onClick={() => openDetails(r)}
-                                            >
-                                                <EyeIcon className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })
-                    )}
+                                <td className="p-3 text-center">
+                                    <button
+                                        className="inline-flex items-center justify-center rounded-md border px-2 py-1 hover:bg-gray-50"
+                                        onClick={() => {
+                                            setCurrent(r);
+                                            setOpen(true);
+                                        }}
+                                    >
+                                        <EyeIcon className="h-4 w-4" />
+                                    </button>
+                                </td>
+                            </tr>
+                        );
+                    })}
                     </tbody>
                 </table>
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                    Showing {rows.length} of {count}
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        className="rounded px-3 py-2 border"
-                        onClick={() => setOffset(Math.max(0, offset - limit))}
-                        disabled={!canPrev || loading}
-                    >
-                        Prev
-                    </button>
-                    <button
-                        className="rounded px-3 py-2 border"
-                        onClick={() => setOffset(offset + limit)}
-                        disabled={!canNext || loading}
-                    >
-                        Next
-                    </button>
-                </div>
-            </div>
-
-            {/* Modal */}
-            <Modal
-                open={open}
-                onClose={() => setOpen(false)}
-                title={current && <div className="text-xl font-semibold">Booking Details — {current.uuid}</div>}
-                showCloseButton
-            >
-                {current ? <ReservationDetails r={current} /> : null}
-            </Modal>
+            {/* If you still need the modal: */}
+            {open && current && (
+                <Modal
+                    open={open}
+                    onClose={() => setOpen(false)}
+                    title={<div className="text-xl font-semibold">Booking Details — {current.uuid}</div>}
+                    showCloseButton
+                >
+                    {/* put your details view here if you have one */}
+                    <div className="text-sm text-gray-600">Coming soon…</div>
+                </Modal>
+            )}
         </div>
     );
 }

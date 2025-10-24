@@ -10,18 +10,15 @@ import ReservationsTable from "../components/reservationtable.tsx";
 import MetricsBar from "../components/metricsbar.tsx";
 import BookingFilters from "../components/bookingfilters.tsx";
 import type { BookingFilterState } from "../../../types/types.ts";
+import { FiSidebar } from "react-icons/fi";
+import { useListedRestaurantsOnOpen } from "../hooks/useListedRestaurants.tsx";
 
-// Shape expected by ManualBookingForm combobox (structurally typed)
 type RestaurantOption = { value: string; label: string; meta?: string };
 
 const Bookings = () => {
     const [manualOpen, setManualOpen] = useState(false);
-
-    const [toast, setToast] = useState<{
-        type: "success" | "error";
-        message: string;
-    } | null>(null);
-
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
     const [confirmMultiOpen, setConfirmMultiOpen] = useState(false);
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
@@ -38,45 +35,27 @@ const Bookings = () => {
         total: 0,
     });
 
-    // ---- Restaurants from API for ManualBookingForm ----
-    const [restaurantOptions, setRestaurantOptions] = useState<RestaurantOption[]>(
-        []
-    );
-    const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+    // Load ONLY listed restaurants when the modal is opened
+    const {
+        options: restaurantOptions,
+        loading: restaurantsLoading,
+        error: restaurantsError,
+    } = useListedRestaurantsOnOpen(manualOpen, 500);
 
+    // Sidebar behavior
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                setRestaurantsLoading(true);
-                // TODO: replace with your real endpoint
-                const res = await fetch("/api/restaurants");
-                if (!res.ok) throw new Error("Failed to load restaurants");
-                const data = await res.json(); // [{id, name, neighborhood, ...}]
-                if (cancelled) return;
-                const options: RestaurantOption[] = (Array.isArray(data) ? data : []).map(
-                    (r: any) => ({
-                        value: String(r.id ?? r._id ?? r.slug ?? r.name),
-                        label: String(r.name ?? "Unnamed"),
-                        meta: r.neighborhood ? String(r.neighborhood) : undefined,
-                    })
-                );
-                setRestaurantOptions(options);
-            } catch (e) {
-                console.error(e);
-                setRestaurantOptions([]);
-            } finally {
-                if (!cancelled) setRestaurantsLoading(false);
-            }
-        })();
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
+        if (sidebarOpen) document.body.style.overflow = "hidden";
+        else document.body.style.overflow = "";
+        window.addEventListener("keydown", onKey);
         return () => {
-            cancelled = true;
+            window.removeEventListener("keydown", onKey);
+            document.body.style.overflow = "";
         };
-    }, []);
+    }, [sidebarOpen]);
 
-    const handleCreate = (data: any) => {
+    const handleCreate = (_data: any) => {
         try {
-            // perform your create call here if needed
             setManualOpen(false);
             setToast({ type: "success", message: "Booking successfully created ✅" });
             setTimeout(() => setToast(null), 3000);
@@ -87,55 +66,97 @@ const Bookings = () => {
     };
 
     return (
-        <div className="flex min-h-screen">
-            <aside className="w-64 border-r">
-                <Sidebar />
+        <div className="relative flex min-h-screen bg-white">
+            {/* Sidebar */}
+            <aside
+                className={`fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-neutral-200 transform transition-transform duration-300 ease-in-out ${
+                    sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                }`}
+                aria-hidden={!sidebarOpen}
+            >
+                <Sidebar onClose={() => setSidebarOpen(false)} />
             </aside>
 
-            <main className="flex-1 flex flex-col p-6">
-                <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                        <Search />
+            {/* Overlay */}
+            {sidebarOpen && (
+                <button
+                    aria-label="Close sidebar overlay"
+                    onClick={() => setSidebarOpen(false)}
+                    className="fixed inset-0 z-30 bg-black/30"
+                />
+            )}
+
+            <main className="flex-1 flex flex-col w-full">
+                {/* Header */}
+                <div className="w-full px-6 py-6 relative">
+                    <button
+                        aria-label="Toggle sidebar"
+                        onClick={() => setSidebarOpen((s) => !s)}
+                        className="absolute top-6 left-6 inline-flex items-center justify-center rounded-md border border-neutral-300 bg-white p-2 shadow-sm hover:bg-neutral-100 active:scale-[0.98] transition"
+                        title="Toggle Sidebar"
+                    >
+                        <FiSidebar size={18} />
+                    </button>
+
+                    <div className="flex items-center gap-3 pl-14">
+                        <div className="flex-1 min-w-0">
+                            <Search />
+                        </div>
+                        <ProfileCard profile={displayProfile[0]} />
                     </div>
-                    <ProfileCard profile={displayProfile[0]} />
-                </div>
 
-                <div className="mt-6 flex items-end">
-                    <div className="ml-2">
-                        <h1 className="text-black text-4xl font-bold">Bookings Management</h1>
-                        <p className="text-gray-500 mt-2 max-w-2xl">
-                            Viewing reservations from the new API (all venues)
-                        </p>
+                    <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <h1 className="text-3xl font-bold">Bookings Management</h1>
+                        <div className="ml-auto">
+                            <AddManualBookingButton onClick={() => setManualOpen(true)} />
+                        </div>
                     </div>
-                    <div className="ml-auto shrink-0">
-                        <AddManualBookingButton onClick={() => setManualOpen(true)} />
+                    <p className="text-gray-500 text-sm mt-2">
+                        Viewing reservations from the new API (all venues)
+                    </p>
+
+                    <section className="mt-6">
+                        <MetricsBar />
+                    </section>
+
+                    <div className="mt-5">
+                        <BookingFilters
+                            value={filters}
+                            onChange={(patch) => setFilters({ ...filters, ...patch })}
+                            cities={[]}
+                            sources={[]}
+                            statuses={[]}
+                            companies={[]}
+                            total={0}
+                        />
                     </div>
                 </div>
 
-                <section className="mt-6">
-                    <MetricsBar />
-                </section>
+                {/* Table */}
+                <div className="px-6 pb-10">
+                    <div className="w-full rounded-lg border border-neutral-200 shadow-sm overflow-hidden bg-white">
+                        <div className="flex items-center justify-between px-4 py-4 border-b">
+                            <h2 className="text-xl font-semibold text-gray-900">All Reservations</h2>
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-600">Rows:</label>
+                                <select className="border rounded px-2 py-1">
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                                <button className="rounded px-3 py-2 border shadow-sm hover:bg-gray-50">
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
 
-                <div className="mt-6">
-                    <BookingFilters
-                        value={filters}
-                        onChange={(patch) => {
-                            const next = { ...filters, ...patch };
-                            setFilters(next);
-                        }}
-                        cities={[]}
-                        sources={[]}
-                        statuses={[]}
-                        companies={[]}
-                        total={0}
-                    />
+                        <div className="overflow-x-auto table-fit">
+                            <ReservationsTable />
+                        </div>
+                    </div>
                 </div>
 
-                <div className="mt-8">
-                    <ReservationsTable />
-                </div>
-
-                {/* Manual Booking Modal */}
+                {/* Modal: Add Manual Booking */}
                 <Modal
                     open={manualOpen}
                     onClose={() => setManualOpen(false)}
@@ -160,15 +181,26 @@ const Bookings = () => {
                         </>
                     }
                 >
-                    <ManualBookingForm
-                        onCreate={handleCreate}
-                        onDone={() => setManualOpen(false)}
-                        restaurantOptions={restaurantOptions}
-                        restaurantsLoading={restaurantsLoading}
-                    />
+                    {/* Scrollable form body START */}
+                    <div className="max-h-[75vh] overflow-auto custom-scroll pr-1">
+                        {/* Optional inline error for restaurants */}
+                        {restaurantsError && (
+                            <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                Failed to load restaurants. Try reopening the modal.
+                            </div>
+                        )}
+
+                        <ManualBookingForm
+                            onCreate={handleCreate}
+                            onDone={() => setManualOpen(false)}
+                            restaurantOptions={restaurantOptions as RestaurantOption[]}
+                            restaurantsLoading={restaurantsLoading}
+                        />
+                    </div>
+                    {/* Scrollable form body END */}
                 </Modal>
 
-                {/* Other modals (unchanged) */}
+                {/* Other modals */}
                 <Modal
                     open={confirmMultiOpen}
                     onClose={() => setConfirmMultiOpen(false)}
@@ -176,9 +208,7 @@ const Bookings = () => {
                     showCloseButton={false}
                 >
                     <div className="space-y-6">
-                        <p className="text-gray-600">
-                            Bulk actions are not wired to the new table yet.
-                        </p>
+                        <p className="text-gray-600">Bulk actions are not wired yet.</p>
                         <div className="flex justify-end gap-3">
                             <button
                                 type="button"
@@ -198,9 +228,7 @@ const Bookings = () => {
                     showCloseButton={false}
                 >
                     <div className="space-y-6">
-                        <p className="text-gray-600">
-                            Delete is not wired to the new table yet.
-                        </p>
+                        <p className="text-gray-600">Delete is not wired yet.</p>
                         <div className="flex justify-end gap-3">
                             <button
                                 type="button"
@@ -223,8 +251,34 @@ const Bookings = () => {
                     </div>
                 )}
             </main>
+
+            <style>{`
+        .table-fit table {
+          table-layout: auto !important;
+          width: 100% !important;
+          font-size: 0.875rem;
+          line-height: 1.25rem;
+          border-collapse: separate;
+          border-spacing: 0 4px;
+        }
+        .table-fit thead th,
+        .table-fit tbody td {
+          padding: 0.65rem 0.8rem;
+          vertical-align: middle;
+        }
+        .table-fit thead th {
+          white-space: nowrap;
+          background-color: #fafafa;
+        }
+        .table-fit tbody td {
+          white-space: normal;
+        }
+      `}</style>
         </div>
     );
 };
 
 export default Bookings;
+
+/* ───────────────────── Optional: scrollbar styling (global-friendly) ───────────────────── */
+/* If you don't already have this in globals.css, you can paste it there instead: */

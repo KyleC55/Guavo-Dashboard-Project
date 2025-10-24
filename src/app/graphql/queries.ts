@@ -85,3 +85,40 @@ export const GET_ADMIN_RESERVATIONS = gql`
     }
   }
 `
+export const LIST_RESTAURANTS = gql`
+  query ListRestaurants($limit: Int = 100, $offset: Int = 0) {
+    restaurants(options: { limit: $limit, offset: $offset }) {
+      items { uuid name listed }
+      count
+    }
+  }
+`;
+
+export const LIST_RESERVATIONS_THIN = gql`
+  query ReservationsForUI(
+    $uuid: String
+    $from: String!
+    $to: String!
+    $limit: Int!
+    $offset: Int!
+  ) {
+    reservations(
+      uuid: $uuid
+      search: { from: $from, to: $to }
+      pagination: { limit: $limit, offset: $offset }
+    ) {
+      count
+      items {
+        uuid
+        status
+        createdAt
+        startAt
+        endAt
+        allDay
+      }
+    }
+  }
+`;
+
+
+

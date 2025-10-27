@@ -120,5 +120,18 @@ export const LIST_RESERVATIONS_THIN = gql`
   }
 `;
 
-
+export const MEMBERS_FOR_BOOKING = gql`
+    query MembersForBooking($limit: Int = 500, $offset: Int = 0) {
+        members(limit: $limit, offset: $offset) {
+            items {
+                uuid
+                preferredName
+                firstName
+                username
+                email
+            }
+            count
+        }
+    }
+`;
 

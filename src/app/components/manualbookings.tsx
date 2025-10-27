@@ -1,8 +1,8 @@
-// src/components/.../ManualBookingForm.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { BookingRow } from "../../../types/types";
 import { DateTime } from "luxon";
 import { AvailableSlots } from "./AvailableSlots";
+import { useMembersForBooking } from "../hooks/getmembers";
 
 export type RestaurantOption = { value: string; label: string; meta?: string };
 
@@ -14,18 +14,31 @@ type Props = {
     restaurantsLoading?: boolean;
 };
 
-/* ========== Small helpers (NY-localized) ========== */
+/* ================= Helpers ================= */
 const fmtNYDate = (isoDate: string) =>
     DateTime.fromISO(isoDate, { zone: "America/New_York" }).toFormat("ccc, LLL d");
 
 const fmtNYDateTimeRangeLabel = (dateISO: string, timeLabel: string) => {
-    // For now we just show the chosen date (NY) + the timeLabel as-is.
-    // If you later want to parse the actual start/end ISO from the slot, wire that here.
     const d = DateTime.fromISO(dateISO, { zone: "America/New_York" });
     return `${d.toFormat("ccc, LLL d")} • ${timeLabel}`;
 };
 
-/* ========== Tiny Modal ========== */
+const companyFromEmail = (email?: string | null) => {
+    if (!email) return undefined;
+    const domain = email.split("@")[1];
+    const root = domain?.split(".")[0];
+    if (!root) return undefined;
+    return root.charAt(0).toUpperCase() + root.slice(1);
+};
+
+// Prefer "First Last" if both exist; otherwise fall back gracefully
+const displayNameFor = (m: any) => {
+    if (!m) return "";
+    if (m.firstName && m.lastName) return `${m.firstName} ${m.lastName}`;
+    return m.preferredName || m.firstName || m.username || m.email || "";
+};
+
+/* ================= Modal ================= */
 function Modal({
                    title,
                    open,
@@ -63,7 +76,7 @@ function Modal({
     );
 }
 
-/* ========== Combobox ========== */
+/* ================= Restaurant Combobox ================= */
 function RestaurantCombobox({
                                 options,
                                 value,
@@ -120,13 +133,7 @@ function RestaurantCombobox({
             >
                 <div className="min-w-0">
                     <div className="text-xs text-gray-500">Restaurant</div>
-                    <div
-                        className={
-                            selected
-                                ? "font-extrabold whitespace-nowrap overflow-hidden text-ellipsis"
-                                : "text-gray-400"
-                        }
-                    >
+                    <div className={selected ? "font-extrabold truncate" : "text-gray-400"}>
                         {selected ? selected.label : "Select a restaurant"}
                     </div>
                 </div>
@@ -165,8 +172,8 @@ function RestaurantCombobox({
                                             }}
                                             className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-50"
                                         >
-                                            <span className="font-medium">{o.label}</span>
-                                            {o.meta && <span className="ml-auto text-xs text-gray-500">{o.meta}</span>}
+                                            <span className="font-medium truncate">{o.label}</span>
+                                            {o.meta && <span className="ml-auto text-xs text-gray-500 truncate">{o.meta}</span>}
                                             {value === o.value && <span className="ml-2 text-xs">✓</span>}
                                         </button>
                                     </li>
@@ -180,7 +187,85 @@ function RestaurantCombobox({
     );
 }
 
-/* ========== Pill Blocks ========== */
+/* ================= Bookee Results Panel (Compact) ================= */
+function BookeeResults({
+                           options,
+                           value,
+                           onChange,
+                           query,
+                           open,
+                           onOpenChange,
+                           loading,
+                       }: {
+    options: { value: string; label: string; meta?: string }[];
+    value: string;
+    onChange: (v: string) => void;
+    query: string;
+    open: boolean;
+    onOpenChange: (o: boolean) => void;
+    loading?: boolean;
+}) {
+    const panelRef = useRef<HTMLDivElement | null>(null);
+
+    const filtered = useMemo(() => {
+        const s = query.trim().toLowerCase();
+        if (!s) return options;
+        return options.filter(
+            (o) => o.label.toLowerCase().includes(s) || o.meta?.toLowerCase().includes(s)
+        );
+    }, [query, options]);
+
+    useEffect(() => {
+        if (!open) return;
+        const onDoc = (e: MouseEvent) => {
+            const t = e.target as Node;
+            if (panelRef.current?.contains(t)) return;
+            onOpenChange(false);
+        };
+        document.addEventListener("mousedown", onDoc);
+        return () => document.removeEventListener("mousedown", onDoc);
+    }, [open, onOpenChange]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            ref={panelRef}
+            className="absolute z-50 mt-1 w-full rounded-xl border bg-white shadow-lg overflow-hidden"
+        >
+            <div className="max-h-52 overflow-auto text-sm">
+                {loading ? (
+                    <div className="px-3 py-2 text-gray-500">Loading…</div>
+                ) : filtered.length === 0 ? (
+                    <div className="px-3 py-2 text-gray-500">No matches.</div>
+                ) : (
+                    <ul className="divide-y">
+                        {filtered.map((o) => (
+                            <li key={o.value}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(o.value);
+                                        onOpenChange(false);
+                                    }}
+                                    className="w-full flex items-center gap-3 px-3 py-1.5 text-left hover:bg-gray-50"
+                                >
+                                    <span className="font-medium truncate">{o.label}</span>
+                                    {o.meta && (
+                                        <span className="ml-auto text-xs text-gray-500 truncate">{o.meta}</span>
+                                    )}
+                                    {value === o.value && <span className="ml-2 text-xs">✓</span>}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ================= Blocks / Stepper ================= */
 function Block({
                    label,
                    value,
@@ -225,9 +310,7 @@ function Block({
                 <div className="flex items-center">
                     <div className="flex-1 min-w-0">
                         <div className="text-xs text-gray-500">{label}</div>
-                        <div className="text-lg font-extrabold whitespace-nowrap overflow-hidden text-ellipsis">
-                            {value}
-                        </div>
+                        <div className="text-lg font-extrabold truncate">{value}</div>
                     </div>
                     <span className="ml-3 text-gray-700">▾</span>
                 </div>
@@ -281,41 +364,17 @@ function Stepper({
     );
 }
 
-/* ========== ManualBookingForm (SCROLLABLE) ========== */
+/* ================= Main Form ================= */
 type EventType = "Restaurant" | "Catering" | "Private Dining" | "Other";
 
 const EVENT_CONFIG: Record<
     EventType,
     { guestLabel: string; min: number; max: number; timeOptions: string[]; requireRestaurant: boolean }
 > = {
-    Restaurant: {
-        guestLabel: "Guests",
-        min: 2,
-        max: 20,
-        timeOptions: ["All Day", "Breakfast", "Lunch", "Dinner"],
-        requireRestaurant: true,
-    },
-    "Private Dining": {
-        guestLabel: "Guests",
-        min: 6,
-        max: 60,
-        timeOptions: ["All Day", "Early Evening", "Evening"],
-        requireRestaurant: true,
-    },
-    Catering: {
-        guestLabel: "Attendees",
-        min: 10,
-        max: 500,
-        timeOptions: ["All Day", "Morning", "Afternoon", "Evening"],
-        requireRestaurant: false,
-    },
-    Other: {
-        guestLabel: "Attendees",
-        min: 1,
-        max: 200,
-        timeOptions: ["All Day", "Morning", "Afternoon", "Evening"],
-        requireRestaurant: false,
-    },
+    Restaurant: { guestLabel: "Guests", min: 2, max: 20, timeOptions: ["All Day", "Breakfast", "Lunch", "Dinner"], requireRestaurant: true },
+    "Private Dining": { guestLabel: "Guests", min: 6, max: 60, timeOptions: ["All Day", "Early Evening", "Evening"], requireRestaurant: true },
+    Catering: { guestLabel: "Attendees", min: 10, max: 500, timeOptions: ["All Day", "Morning", "Afternoon", "Evening"], requireRestaurant: false },
+    Other: { guestLabel: "Attendees", min: 1, max: 200, timeOptions: ["All Day", "Morning", "Afternoon", "Evening"], requireRestaurant: false },
 };
 
 export default function ManualBookingForm({
@@ -325,6 +384,30 @@ export default function ManualBookingForm({
                                               restaurantOptions,
                                               restaurantsLoading,
                                           }: Props) {
+    // Bookee search + list
+    const [bookeeSearch, setBookeeSearch] = useState("");
+    const [bookeeOpen, setBookeeOpen] = useState(false);
+    const { members, loading: membersLoading } = useMembersForBooking(bookeeSearch);
+
+    const bookeeOptions = useMemo(() => {
+        return members.map((m: any) => {
+            const label = displayNameFor(m); // ensures "First Last" if available
+            const rightMeta =
+                m.company ||
+                companyFromEmail(m.email) ||
+                [m.team, m.cooperation].filter(Boolean).join(" • ") ||
+                undefined;
+            return { value: m.uuid as string, label, meta: rightMeta };
+        });
+    }, [members]);
+
+    const [bookeeUuid, setBookeeUuid] = useState<string>("");
+    const selectedBookee = useMemo(
+        () => members.find((m: any) => m.uuid === bookeeUuid),
+        [members, bookeeUuid]
+    );
+
+    // Form fields
     const [name, setName] = useState("");
     const [team, setTeam] = useState("");
     const [cooperation, setCooperation] = useState("");
@@ -340,46 +423,50 @@ export default function ManualBookingForm({
 
     const [open, setOpen] = useState<"guests" | "date" | "time" | null>(null);
     const [guests, setGuests] = useState(cfg.min);
-
-    // Default date = "today in New York"
-    const [date, setDate] = useState<string>(
-        DateTime.now().setZone("America/New_York").toISODate()!
-    );
-
+    const _todayNY = DateTime.now().setZone("America/New_York").toISODate()!;
+    const [date, setDate] = useState<string>(_todayNY);
     const [time, setTime] = useState(cfg.timeOptions[0]);
     const [notes, setNotes] = useState("");
-
-    // Confirmation modal state
     const [confirmOpen, setConfirmOpen] = useState(false);
 
-    // Reset when type changes
+    // Reset type changes
     useEffect(() => {
         setGuests(cfg.min);
         setTime(cfg.timeOptions[0]);
         if (!cfg.requireRestaurant) setRestaurantId("");
-    }, [eventType]); // intentional
+    }, [eventType]);
+
+    // Autofill from selected bookee, and reflect label in the input
+    useEffect(() => {
+        if (!selectedBookee) return;
+        const display = displayNameFor(selectedBookee); // <-- "First Last" if available
+        setName(display);
+        setBookeeSearch(display); // show selected full name in the search box
+        if (selectedBookee.team) setTeam(selectedBookee.team);
+        if (selectedBookee.cooperation) setCooperation(selectedBookee.cooperation);
+    }, [selectedBookee]);
 
     // Validation
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Required";
-    const restaurantDisabled = !name.trim(); // ← block restaurant until name present
+    if (!bookeeUuid) errors.bookee = "Required";
     if (cfg.requireRestaurant && !restaurantId) errors.restaurant = "Pick a restaurant";
     if (!date) errors.date = "Required";
     const disabled = Object.keys(errors).length > 0;
+    const restaurantDisabled = !bookeeUuid;
 
-    // Build payload (shared by regular submit & modal confirm)
+    // Build payload — booker is the full display name
     const buildPayload = (): Omit<BookingRow, "id"> => ({
         venue: selectedRestaurant?.label ?? "",
         city: "",
-        booker: name,
+        booker: name, // "First Last" if available
         company: team,
         role: cooperation,
         partySize: guests,
-        date, // keep as YYYY-MM-DD; backend combines with chosen slot/time later
+        date,
         status: "confirmed",
         source: "Manual",
-        email: "",
-        notes: `Time: ${time}${notes ? `\n${notes}` : ""}`,
+        email: selectedBookee?.email ?? "",
+        notes: `Bookee: ${name}${selectedBookee ? ` (${selectedBookee.uuid})` : ""}\nTime: ${time}${notes ? `\n${notes}` : ""}`,
     });
 
     const submit: React.FormEventHandler<HTMLFormElement> = (e) => {
@@ -389,32 +476,18 @@ export default function ManualBookingForm({
         onDone?.();
     };
 
-    // When a slot is chosen -> set date/time/guests and open confirm modal
-    const onPickSlot = ({
-                            date: d,
-                            time: t,
-                            partySize,
-                        }: {
-        date: string;
-        time: string;
-        partySize: number;
-    }) => {
+    const onPickSlot = ({ date: d, time: t, partySize }: { date: string; time: string; partySize: number }) => {
         setDate(d);
         setTime(t || "All Day");
         const bounded = Math.max(cfg.min, Math.min(cfg.max, partySize));
         setGuests(bounded);
         setOpen(null);
-        // show confirm
         setConfirmOpen(true);
     };
 
     const confirmFooter = (
         <div className="flex justify-end gap-2">
-            <button
-                type="button"
-                className="px-3 py-2 rounded border hover:bg-gray-100"
-                onClick={() => setConfirmOpen(false)}
-            >
+            <button type="button" className="px-3 py-2 rounded border hover:bg-gray-100" onClick={() => setConfirmOpen(false)}>
                 Back
             </button>
             <button
@@ -437,16 +510,16 @@ export default function ManualBookingForm({
             <Modal title="Confirm booking" open={confirmOpen} onClose={() => setConfirmOpen(false)} footer={confirmFooter}>
                 <div className="space-y-3 text-sm">
                     <div className="flex items-start gap-3">
-                        <div className="w-24 text-gray-500">Name</div>
-                        <div className="font-medium">{name || "—"}</div>
+                        <div className="w-24 text-gray-500">Bookee</div>
+                        <div className="font-medium">
+                            {selectedBookee ? `${name} (${selectedBookee.email})` : "—"}
+                        </div>
                     </div>
                     <div className="flex items-start gap-3">
                         <div className="w-24 text-gray-500">Restaurant</div>
                         <div className="font-medium">
                             {selectedRestaurant?.label || "—"}
-                            {selectedRestaurant?.meta && (
-                                <div className="text-xs text-gray-500 mt-0.5">{selectedRestaurant.meta}</div>
-                            )}
+                            {selectedRestaurant?.meta && <div className="text-xs text-gray-500 mt-0.5">{selectedRestaurant.meta}</div>}
                         </div>
                     </div>
                     <div className="flex items-start gap-3">
@@ -477,25 +550,41 @@ export default function ManualBookingForm({
             </Modal>
 
             {/* Main form */}
-            <form
-                id="manual-booking-form"
-                onSubmit={submit}
-                className="space-y-6 max-h-[70vh] overflow-y-auto pr-2"
-            >
-                {/* Top: Name / Team / Cooperation */}
+            <form id="manual-booking-form" onSubmit={submit} className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                {/* === Bookee / Team / Cooperation === */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+                    {/* Bookee search + results (no select box) */}
+                    <div className="relative">
                         <label className="block text-sm mb-1">
-                            Name <span className="text-rose-500">*</span>
+                            Bookee <span className="text-rose-500">*</span>
                         </label>
+
                         <input
                             className="w-full rounded border px-3 py-2"
-                            placeholder="e.g., Q4 Partnership Dinner"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Search by name"
+                            value={bookeeSearch}
+                            onFocus={() => setBookeeOpen(true)}
+                            onChange={(e) => {
+                                setBookeeSearch(e.target.value);
+                                setBookeeOpen(true);
+                            }}
                         />
-                        {(!name.trim()) && <p className="text-xs text-red-600 mt-1">Required</p>}
+
+                        {/* Results dropdown, anchored under the input */}
+                        <BookeeResults
+                            options={bookeeOptions}
+                            value={bookeeUuid}
+                            onChange={setBookeeUuid}
+                            query={bookeeSearch}
+                            open={bookeeOpen}
+                            onOpenChange={setBookeeOpen}
+                            loading={membersLoading}
+                        />
+
+                        {!bookeeUuid && <p className="text-xs text-red-600 mt-1">Required</p>}
                     </div>
+
+                    {/* Team */}
                     <div>
                         <label className="block text-sm mb-1">Team</label>
                         <input
@@ -505,6 +594,8 @@ export default function ManualBookingForm({
                             onChange={(e) => setTeam(e.target.value)}
                         />
                     </div>
+
+                    {/* Cooperation */}
                     <div>
                         <label className="block text-sm mb-1">Cooperation</label>
                         <input
@@ -541,13 +632,15 @@ export default function ManualBookingForm({
                             value={restaurantId}
                             onChange={setRestaurantId}
                             loading={restaurantsLoading}
-                            disabled={restaurantDisabled} // ← Name required first
+                            disabled={restaurantDisabled}
                         />
                         {!restaurantId && !restaurantDisabled && (
                             <p className="text-xs text-red-600 mt-1">Pick a restaurant</p>
                         )}
                         {restaurantDisabled && (
-                            <p className="text-xs text-gray-500 mt-1">Enter a name to choose a restaurant.</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Select a bookee to choose a restaurant.
+                            </p>
                         )}
 
                         {restaurantId && (
@@ -562,7 +655,7 @@ export default function ManualBookingForm({
                     </div>
                 )}
 
-                {/* Pills on ONE ROW */}
+                {/* Guests / Date / Time */}
                 <div className="flex gap-3">
                     <Block
                         className="flex-1"
@@ -606,9 +699,7 @@ export default function ManualBookingForm({
                                         <button
                                             type="button"
                                             onClick={() => setTime(t)}
-                                            className={`w-full rounded-md px-3 py-2 text-left hover:bg-gray-50 ${
-                                                time === t ? "font-semibold" : ""
-                                            }`}
+                                            className={`w-full rounded-md px-3 py-2 text-left hover:bg-gray-50 ${time === t ? "font-semibold" : ""}`}
                                         >
                                             {t}
                                         </button>
@@ -631,7 +722,7 @@ export default function ManualBookingForm({
                     />
                 </div>
 
-                {/* Actions (still keep regular submit as a fallback) */}
+                {/* Actions */}
                 <div className="flex justify-end gap-2 pt-1">
                     <button
                         type="button"

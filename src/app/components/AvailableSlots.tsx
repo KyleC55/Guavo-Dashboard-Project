@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DateTime } from "luxon";
 import { useRestaurantReservations } from "../hooks/useRestaurantReservations";
 
-/* ───────── helpers: always treat reservation timestamps as UTC ───────── */
 const pickStartISO = (r: any) => r?.dateStart ?? r?.date?.start ?? null;
 const pickEndISO   = (r: any) => r?.dateEnd   ?? r?.date?.end   ?? null;
 

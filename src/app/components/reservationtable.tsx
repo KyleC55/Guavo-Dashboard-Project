@@ -124,15 +124,27 @@ function StatusPill({
 }) {
     const color = STATUS_COLORS[status] ?? "bg-gray-200 text-gray-800";
     const label = STATUS_LABELS[status] ?? formatLabel(status);
-    // All statuses are now editable
-    const isEditable = onStatusChange && !disabled;
+    
+    // RESERVED and CANCELED statuses are not editable - nothing happens on click
+    const isNonEditable = status === "RESERVED" || status === "CANCELED";
+    const isEditable = onStatusChange && !disabled && !isNonEditable;
     
     const baseClasses = `inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap leading-none ${color}`;
     const clickableClasses = isEditable ? "cursor-pointer hover:opacity-80 transition-opacity" : "";
     const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "";
     
-    // Only allow these three statuses: RESERVED, CANCELED, CANCEL_PENDING
-    const allowedStatuses = ['RESERVED', 'CANCELED', 'CANCEL_PENDING'];
+    // Determine allowed statuses based on current status
+    let allowedStatuses: string[] = [];
+    if (status === "RESERVATION_PENDING") {
+        // For RESERVATION_PENDING (Pending Manual), only allow RESERVED or CANCELED
+        allowedStatuses = ['RESERVED', 'CANCELED'];
+    } else if (status === "CANCEL_PENDING") {
+        // For CANCEL_PENDING, allow RESERVED or CANCELED
+        allowedStatuses = ['RESERVED', 'CANCELED'];
+    } else {
+        // For other statuses (but RESERVED and CANCELED are non-editable anyway)
+        allowedStatuses = ['RESERVED', 'CANCELED', 'CANCEL_PENDING'];
+    }
     
     // Always include the current status even if it's not in the allowed list (so user can see current status)
     const availableStatuses = allowedStatuses.includes(status) 
@@ -202,6 +214,7 @@ function StatusPill({
         );
     }
     
+    // For non-editable statuses (RESERVED and CANCELED), just show the status pill without interaction
     return (
         <span className={`${baseClasses} ${disabledClasses}`}>
       {label}

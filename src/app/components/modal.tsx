@@ -71,7 +71,7 @@ export default function Modal({
                     </div>
                 )}
 
-                <div className="flex-1 overflow-visible min-h-0 auto-height">
+                <div className="flex-1 overflow-y-auto min-h-0">
                     {children}
                 </div>
 

@@ -60,6 +60,18 @@ const STATUS_LABELS: Record<string, string> = {
     RESERVATION_PENDING: "Pending (Manual)",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+    RESY_CONCIERGE: "Resy",
+    "OPEN-TABLE": "OpenTable",
+    MANUAL: "Manual",
+};
+
+const SOURCE_STYLES: Record<string, string> = {
+    RESY_CONCIERGE: "bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-200",
+    "OPEN-TABLE": "bg-green-100 text-green-800 ring-1 ring-inset ring-green-200",
+    MANUAL: "bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200",
+};
+
 function StatusPill({ status }: { status: string }) {
     const color = STATUS_COLORS[status] ?? "bg-gray-200 text-gray-800";
     const label = STATUS_LABELS[status] ?? formatLabel(status);
@@ -71,10 +83,18 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function SourcePill({ value }: { value?: string | null }) {
-    const v = value || "—"
+    if (!value) {
+        return (
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-200">
+        —
+      </span>
+        );
+    }
+    const label = SOURCE_LABELS[value] ?? formatLabel(value);
+    const style = SOURCE_STYLES[value] ?? "bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200";
     return (
-        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-800">
-      {v}
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>
+      {label}
     </span>
     )
 }
@@ -172,6 +192,13 @@ export default function ReservationDetails({ reservation: r, showHistoryTab = tr
                 <div>
                     <div className="text-sm text-gray-500">Venue</div>
                     <div className="font-medium">{r.restaurant?.name ?? "—"}</div>
+                    {r.restaurant?.city?.addressLine1 && (
+                        <div className="text-xs text-gray-500 mt-1">
+                            {r.restaurant.city.addressLine1}
+                            {r.restaurant.city.addressLine2 && `, ${r.restaurant.city.addressLine2}`}
+                            {r.restaurant.city.zipCode && ` ${r.restaurant.city.zipCode}`}
+                        </div>
+                    )}
                     <div className="text-xs text-gray-500">{r.restaurant?.timezone ?? "—"}</div>
                 </div>
 

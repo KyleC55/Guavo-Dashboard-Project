@@ -27,6 +27,9 @@ export interface GqlRestaurant {
     city?: {
         location?: string | null
         neighborhood?: string | null
+        addressLine1?: string | null
+        addressLine2?: string | null
+        zipCode?: string | null
     } | null
 }
 

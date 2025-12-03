@@ -51,3 +51,21 @@ export const ADMIN_CREATE_BOOKING = gql`
         }
     }
 `;
+
+export const UPDATE_BOOKING_NOTE = gql`
+    mutation UpdateBookingNote($uuid: String!, $note: String!) {
+        updateBookingNote(uuid: $uuid, note: $note)
+    }
+`;
+
+export const UPDATE_RESERVATION_DATES = gql`
+    mutation UpdateReservationDates($uuid: String!, $startIso: String!, $endIso: String!) {
+        updateReservationDates(uuid: $uuid, startIso: $startIso, endIso: $endIso)
+    }
+`;
+
+export const UPDATE_RESERVATION_NOTE = gql`
+    mutation UpdateReservationNote($uuid: String!, $note: String!) {
+        updateReservationNote(uuid: $uuid, note: $note)
+    }
+`;

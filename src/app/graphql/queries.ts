@@ -44,6 +44,9 @@ export const GET_ALL_RESERVATIONS = gql`
                     city {
                         location
                         neighborhood
+                        addressLine1
+                        addressLine2
+                        zipCode
                     }
                 }
                 table { 
@@ -89,7 +92,18 @@ export const GET_ADMIN_RESERVATIONS = gql`
                 dateStart
                 dateEnd
                 date { start end expiry }
-                restaurant { uuid name timezone }     # ← no id here
+                restaurant { 
+                    uuid 
+                    name 
+                    timezone 
+                    city {
+                        location
+                        neighborhood
+                        addressLine1
+                        addressLine2
+                        zipCode
+                    }
+                }
                 table { 
                     label 
                     type 

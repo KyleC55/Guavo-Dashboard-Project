@@ -73,12 +73,13 @@ export interface VenueList {
 
 export interface BookingFilterState {
     query: string;
-    city: string;
+    state: string;
+    neighborhood: string;
     source: string;
     status: string;
     company: string;
-    dateFrom: string;
-    dateTo: string;
+    member: string;
+    startDate: string;
     page: number;
     pageSize: number;
     total: number;

@@ -7,6 +7,8 @@ type ModalProps = {
     children: React.ReactNode;
     showCloseButton?: boolean;
     footer?: React.ReactNode;
+    logo?: React.ReactNode;
+    size?: 'sm' | 'md' | 'lg' | 'xl';
 };
 
 export default function Modal({
@@ -15,6 +17,8 @@ export default function Modal({
                                   onClose,
                                   children,
                                   showCloseButton = true, // default keeps old behavior
+                                  logo,
+                                  size = 'md',
                               }: ModalProps) {
     const panelRef = useRef<HTMLDivElement>(null);
 
@@ -38,24 +42,38 @@ export default function Modal({
 
     if (!open) return null;
 
+    const sizeClasses = {
+        sm: 'max-w-md',
+        md: 'max-w-lg',
+        lg: 'max-w-lg',
+        xl: 'max-w-lg', // Revert to original width, focus on height expansion
+    };
+
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+            <div className="absolute inset-0 bg-black/50" aria-hidden />
             <div
                 ref={panelRef}
                 role="dialog"
                 aria-modal="true"
                 tabIndex={-1}
-                className="relative z-10 w-full max-w-lg rounded-xl bg-white p-6 shadow-xl outline-none"
+                className={`relative z-10 w-full ${sizeClasses[size]} max-h-[95vh] rounded-xl bg-white p-6 shadow-xl outline-none flex flex-col`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {title && (
-                    <div className="mb-4 text-xl font-semibold flex items-center justify-between">
-                        {title}
+                    <div className="mb-4 text-xl font-semibold flex items-center justify-between flex-shrink-0">
+                        <span>{title}</span>
+                        {logo && (
+                            <div className="flex-shrink-0 ml-4">
+                                {logo}
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {children}
+                <div className="flex-1 overflow-visible min-h-0 auto-height">
+                    {children}
+                </div>
 
                 {showCloseButton && (
                     <div className="mt-6 flex justify-end">

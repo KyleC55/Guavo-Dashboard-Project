@@ -8,6 +8,8 @@ type MemberRow = {
     firstName?: string | null;
     username?: string | null;
     email?: string | null;
+    allergies?: string[] | null;
+    restrictions?: string[] | null;
     // team?: string | null;
     // cooperation?: string | null;
     // company?: string | null;

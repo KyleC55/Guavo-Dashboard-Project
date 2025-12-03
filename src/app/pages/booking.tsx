@@ -1,48 +1,182 @@
-import { useEffect, useState } from "react";
-import Sidebar from "../components/sidebar.tsx";
-import Search from "../components/searchbar.tsx";
-import { ProfileCard } from "../components/profilecard.tsx";
-import { displayProfile } from "../data/profile.ts";
-import Modal from "../components/modal.tsx";
-import ManualBookingForm from "../components/manualbookings.tsx";
-import AddManualBookingButton from "../components/manualbookingadd.tsx";
-import ReservationsTable from "../components/reservationtable.tsx";
-import MetricsBar from "../components/metricsbar.tsx";
-import BookingFilters from "../components/bookingfilters.tsx";
-import type { BookingFilterState } from "../../../types/types.ts";
+import { useEffect, useState, useMemo, useRef } from "react";
+import Sidebar from "../components/sidebar";
+import Search from "../components/searchbar";
+import { ProfileCard } from "../components/profilecard";
+import { displayProfile } from "../data/profile";
+import Modal from "../components/modal";
+import ManualBookingForm from "../components/manualbookings";
+import AddManualBookingButton from "../components/manualbookingadd";
+import ReservationsTable from "../components/reservationtable";
+import MetricsBar from "../components/metricsbar";
+import BookingFilters from "../components/bookingfilters";
+import type { BookingFilterState } from "../../../types/types";
 import { FiSidebar } from "react-icons/fi";
-import { useListedRestaurantsOnOpen } from "../hooks/useListedRestaurants.tsx";
+import { useListedRestaurantsOnOpen } from "../hooks/useListedRestaurants";
+import { useAllReservations } from "../hooks/getreservation";
+import { useReservationMetrics } from "../hooks/metricsCard";
 
-type RestaurantOption = { value: string; label: string; meta?: string };
+type RestaurantOption = {
+    value: string;           
+    label: string;
+    meta?: string;
+    uuid: string;           
+    id?: number | null;      
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    cityLocation?: string | null;
+};
 
 const Bookings = () => {
     const [manualOpen, setManualOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
-    const [confirmMultiOpen, setConfirmMultiOpen] = useState(false);
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+    
+    // Get total bookings for subtitle
+    const { totalBookings, loading: metricsLoading } = useReservationMetrics();
 
     const [filters, setFilters] = useState<BookingFilterState>({
         query: "",
-        city: "",
+        state: "",
+        neighborhood: "",
         source: "",
         status: "",
         company: "",
-        dateFrom: "",
-        dateTo: "",
+        member: "",
+        startDate: "",
         page: 1,
         pageSize: 50,
         total: 0,
     });
 
-    // Load ONLY listed restaurants when the modal is opened
-    const {
-        options: restaurantOptions,
-        loading: restaurantsLoading,
-        error: restaurantsError,
-    } = useListedRestaurantsOnOpen(manualOpen, 500);
+    // Use a ref instead of state to avoid render-time updates
+    const metricsRefetchRef = useRef<(() => Promise<void>) | null>(null);
 
-    // Sidebar behavior
+    // Table data - use backend filtering
+    const {
+        rows,
+        count,
+        loading,
+        error,
+        refetch,
+        limit,
+        offset,
+        setOffset,
+        setLimit,
+        canPrev,
+        canNext,
+    } = useAllReservations(filters.pageSize, {}, {
+        status: filters.status || undefined,
+        state: filters.state || undefined,
+        neighborhood: filters.neighborhood || undefined,
+        company: filters.company || undefined,
+        member: filters.member || undefined,
+        source: filters.source || undefined,
+        startDate: filters.startDate || undefined,
+        query: filters.query || undefined,
+    });
+
+    // Reset offset when filters change
+    useEffect(() => {
+        if (offset > 0) {
+            setOffset(0);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        filters.startDate,
+        filters.state,
+        filters.neighborhood,
+        filters.status,
+        filters.company,
+        filters.member,
+        filters.source,
+        filters.query,
+    ]);
+
+    useEffect(() => {
+        setLimit(filters.pageSize);
+    }, [filters.pageSize, setLimit]);
+
+
+    // Extract unique filter values from data
+    const filterOptions = useMemo(() => {
+        const data = rows ?? [];
+        const states = new Set<string>();
+        const neighborhoodsByState = new Map<string, Set<string>>();
+        const statuses = new Set<string>();
+        const companies = new Set<string>();
+        const membersByCompany = new Map<string, Set<string>>();
+        const sources = new Set<string>();
+
+        data.forEach((r) => {
+            const state = r.restaurant?.city?.location;
+            const neighborhood = r.restaurant?.city?.neighborhood;
+            
+            if (state) {
+                states.add(state);
+                if (neighborhood) {
+                    if (!neighborhoodsByState.has(state)) {
+                        neighborhoodsByState.set(state, new Set<string>());
+                    }
+                    neighborhoodsByState.get(state)!.add(neighborhood);
+                }
+            }
+            
+            if (r.status) {
+                statuses.add(r.status);
+            }
+            
+            const companyName = r.corporate?.name;
+            if (companyName) {
+                companies.add(companyName);
+                
+                // Extract member name for this company
+                if (r.member) {
+                    const memberName = [
+                        r.member.firstName,
+                        r.member.lastName
+                    ].filter(Boolean).join(" ") || r.member.email || "";
+                    
+                    if (memberName) {
+                        if (!membersByCompany.has(companyName)) {
+                            membersByCompany.set(companyName, new Set<string>());
+                        }
+                        membersByCompany.get(companyName)!.add(memberName);
+                    }
+                }
+            }
+            
+            // Source could be derived from type or other fields
+            if (r.type) {
+                sources.add(r.type);
+            }
+        });
+
+        // Convert neighborhoods map to sorted arrays
+        const neighborhoodsMap: Record<string, string[]> = {};
+        neighborhoodsByState.forEach((neighborhoods, state) => {
+            neighborhoodsMap[state] = Array.from(neighborhoods).sort();
+        });
+
+        // Convert members map to sorted arrays
+        const membersMap: Record<string, string[]> = {};
+        membersByCompany.forEach((members, company) => {
+            membersMap[company] = Array.from(members).sort();
+        });
+
+        return {
+            states: Array.from(states).sort(),
+            neighborhoodsByState: neighborhoodsMap,
+            statuses: Array.from(statuses).sort(),
+            companies: Array.from(companies).sort(),
+            membersByCompany: membersMap,
+            sources: Array.from(sources).sort(),
+        };
+    }, [rows]);
+
+    // No client-side filtering needed - backend handles it
+
+    //  
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
         if (sidebarOpen) document.body.style.overflow = "hidden";
@@ -54,16 +188,63 @@ const Bookings = () => {
         };
     }, [sidebarOpen]);
 
-    const handleCreate = (_data: any) => {
-        try {
-            setManualOpen(false);
-            setToast({ type: "success", message: "Booking successfully created ✅" });
-            setTimeout(() => setToast(null), 3000);
-        } catch {
-            setToast({ type: "error", message: "Booking not created ❌" });
-            setTimeout(() => setToast(null), 3000);
-        }
+    // Fetch listed restaurants when modal opens
+    const {
+        options: rawRestaurantOptions,
+        loading: restaurantsLoading,
+        error: restaurantsError,
+    } = useListedRestaurantsOnOpen(manualOpen, 500);
+
+    // Normalize options so ManualBookingForm always has value/uuid/label/meta, and id if available
+    const restaurantOptions: RestaurantOption[] = useMemo(() => {
+        return (rawRestaurantOptions ?? [])
+            .filter((o: any) => o.value || o.uuid) // Only include options with a valid uuid
+            .map((o: any) => {
+                const uuid = o.uuid ?? o.value ?? "";
+                return {
+            id: typeof o.id === "number" ? o.id : (typeof o.numericId === "number" ? o.numericId : null),
+                    value: uuid,                    // used by AvailableSlots
+                    uuid: uuid,                     // required, equals value
+            label: o.label ?? o.name ?? "(Unnamed)",
+            meta: o.meta ?? o.city ?? o.timezone ?? "",
+                    addressLine1: o.addressLine1 ?? null,
+                    addressLine2: o.addressLine2 ?? null,
+                    cityLocation: o.cityLocation ?? null,
+                };
+            });
+    }, [rawRestaurantOptions]);
+
+    // ManualBookingForm -> onCreate payload mapper
+    // Note: The form now handles booking creation directly, so this is just a callback
+    // that gets called after the booking is created (for any additional logic if needed)
+    const handleCreate = async (_data: any) => {
+        // The form already creates the booking and calls onBookingCreated for refresh
+        // This callback is kept for backwards compatibility but doesn't need to do anything
+        // since onBookingCreated already handles the refresh
     };
+
+    // Pager helpers
+    const safeLimit = Math.max(1, Number(limit || 1));
+    const safeOffset = Math.max(0, Number(offset || 0));
+    const safeCount = Math.max(0, Number(count || 0));
+
+    const page = useMemo(() => Math.floor(safeOffset / safeLimit) + 1, [safeOffset, safeLimit]);
+    const totalPages = useMemo(
+        () => (safeLimit > 0 ? Math.max(1, Math.ceil(safeCount / safeLimit)) : 1),
+        [safeCount, safeLimit]
+    );
+
+    // Backend handles filtering, so we just use the rows directly
+    const tableRows = rows ?? [];
+    const tableCount = safeCount;
+    const tablePage = page;
+    const tableTotalPages = totalPages;
+    const handlePrevPage = canPrev
+        ? () => setOffset(Math.max(0, safeOffset - safeLimit))
+        : undefined;
+    const handleNextPage = canNext
+        ? () => setOffset(safeOffset + safeLimit)
+        : undefined;
 
     return (
         <div className="relative flex min-h-screen bg-white">
@@ -112,46 +293,69 @@ const Bookings = () => {
                         </div>
                     </div>
                     <p className="text-gray-500 text-sm mt-2">
-                        Viewing reservations from the new API (all venues)
+                        Managing {metricsLoading ? "…" : totalBookings.toLocaleString()} bookings across all venues
                     </p>
 
                     <section className="mt-6">
-                        <MetricsBar />
+                        <MetricsBar onRefetchReady={(refetch) => {
+                            metricsRefetchRef.current = refetch;
+                        }} />
                     </section>
 
                     <div className="mt-5">
                         <BookingFilters
                             value={filters}
-                            onChange={(patch) => setFilters({ ...filters, ...patch })}
-                            cities={[]}
-                            sources={[]}
-                            statuses={[]}
-                            companies={[]}
-                            total={0}
+                            onChange={(patch) => {
+                                // Clear neighborhood if state changes
+                                if (patch.state !== undefined && patch.state !== filters.state) {
+                                    setFilters({ ...filters, ...patch, neighborhood: "" });
+                                } 
+                                // Clear member if company changes
+                                else if (patch.company !== undefined && patch.company !== filters.company) {
+                                    setFilters({ ...filters, ...patch, member: "" });
+                                } else {
+                                    setFilters({ ...filters, ...patch });
+                                }
+                            }}
+                            states={filterOptions.states}
+                            neighborhoods={filterOptions.neighborhoodsByState[filters.state] || []}
+                            sources={filterOptions.sources}
+                            statuses={filterOptions.statuses}
+                            companies={filterOptions.companies}
+                            members={filterOptions.membersByCompany[filters.company] || []}
+                            total={tableCount}
+                            onRefetch={() => {
+                                if (refetch) {
+                                    refetch().catch((err) => {
+                                        console.error("Error refreshing reservations:", err);
+                                    });
+                                }
+                            }}
+                            loading={loading}
                         />
                     </div>
+
+                    {error && (
+                        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            Failed to load reservations. {String(error.message || "")}
+                        </div>
+                    )}
                 </div>
 
                 {/* Table */}
                 <div className="px-6 pb-10">
                     <div className="w-full rounded-lg border border-neutral-200 shadow-sm overflow-hidden bg-white">
-                        <div className="flex items-center justify-between px-4 py-4 border-b">
-                            <h2 className="text-xl font-semibold text-gray-900">All Reservations</h2>
-                            <div className="flex items-center gap-2">
-                                <label className="text-sm text-gray-600">Rows:</label>
-                                <select className="border rounded px-2 py-1">
-                                    <option value={25}>25</option>
-                                    <option value={50}>50</option>
-                                    <option value={100}>100</option>
-                                </select>
-                                <button className="rounded px-3 py-2 border shadow-sm hover:bg-gray-50">
-                                    Refresh
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="overflow-x-auto table-fit">
-                            <ReservationsTable />
+                            <ReservationsTable
+                                rows={tableRows}
+                                loading={!!loading}
+                                total={tableCount}
+                                page={tablePage}
+                                totalPages={tableTotalPages}
+                                onPrevPage={handlePrevPage}
+                                onNextPage={handleNextPage}
+                                onRefetch={refetch}
+                            />
                         </div>
                     </div>
                 </div>
@@ -162,28 +366,26 @@ const Bookings = () => {
                     onClose={() => setManualOpen(false)}
                     showCloseButton={false}
                     title="Add Manual Booking"
+                    size="xl"
+                    logo={
+                        <img 
+                            src="/GuavoLogo.png" 
+                            alt="Guavo Logo" 
+                            className="h-8 w-auto"
+                        />
+                    }
                     footer={
                         <>
-                            <button
-                                type="button"
-                                onClick={() => setManualOpen(false)}
-                                className="rounded-md border px-4 py-2"
-                            >
+                            <button type="button" onClick={() => setManualOpen(false)} className="rounded-md bg-red-600 text-white px-4 py-2 hover:bg-red-700">
                                 Cancel
                             </button>
-                            <button
-                                type="submit"
-                                form="manual-booking-form"
-                                className="ml-2 rounded-md px-4 py-2 bg-black text-white"
-                            >
+                            <button type="submit" form="manual-booking-form" className="ml-2 rounded-md px-4 py-2 bg-black text-white">
                                 Add Booking
                             </button>
                         </>
                     }
                 >
-                    {/* Scrollable form body START */}
-                    <div className="max-h-[75vh] overflow-auto custom-scroll pr-1">
-                        {/* Optional inline error for restaurants */}
+                    <div className="overflow-visible pr-1">
                         {restaurantsError && (
                             <div className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                                 Failed to load restaurants. Try reopening the modal.
@@ -193,63 +395,66 @@ const Bookings = () => {
                         <ManualBookingForm
                             onCreate={handleCreate}
                             onDone={() => setManualOpen(false)}
+                            onBookingCreated={async () => {
+                                // Refresh both reservations table and metrics
+                                await Promise.all([
+                                    refetch(),
+                                    (metricsRefetchRef.current && typeof metricsRefetchRef.current === 'function') 
+                                        ? metricsRefetchRef.current() 
+                                        : Promise.resolve(),
+                                ]);
+                                // Show success toast after refresh completes
+                                setShowSuccessToast(true);
+                                setTimeout(() => {
+                                    setShowSuccessToast(false);
+                                }, 3000);
+                                // Automatically close the modal after booking is created
+                                setManualOpen(false);
+                            }}
                             restaurantOptions={restaurantOptions as RestaurantOption[]}
                             restaurantsLoading={restaurantsLoading}
                         />
                     </div>
-                    {/* Scrollable form body END */}
                 </Modal>
 
                 {/* Other modals */}
-                <Modal
-                    open={confirmMultiOpen}
-                    onClose={() => setConfirmMultiOpen(false)}
-                    title="Cancel Multiple Bookings"
-                    showCloseButton={false}
-                >
-                    <div className="space-y-6">
-                        <p className="text-gray-600">Bulk actions are not wired yet.</p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setConfirmMultiOpen(false)}
-                                className="rounded-md border px-4 py-2"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
-
-                <Modal
-                    open={confirmDeleteOpen}
-                    onClose={() => setConfirmDeleteOpen(false)}
-                    title="Remove Booking"
-                    showCloseButton={false}
-                >
+                <Modal open={confirmDeleteOpen} onClose={() => setConfirmDeleteOpen(false)} title="Remove Booking" showCloseButton={false}>
                     <div className="space-y-6">
                         <p className="text-gray-600">Delete is not wired yet.</p>
                         <div className="flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setConfirmDeleteOpen(false)}
-                                className="rounded-md border px-4 py-2"
-                            >
+                            <button type="button" onClick={() => setConfirmDeleteOpen(false)} className="rounded-md border px-4 py-2">
                                 Close
                             </button>
                         </div>
                     </div>
                 </Modal>
 
-                {toast && (
-                    <div
-                        className={`fixed bottom-6 right-6 px-4 py-2 rounded shadow-lg text-white ${
-                            toast.type === "success" ? "bg-green-600" : "bg-red-600"
-                        }`}
-                    >
-                        {toast.message}
+                {/* Success Toast */}
+                {showSuccessToast && (
+                    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5">
+                        <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+                            <div className="flex-shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-semibold">Booking Successfully Created!</div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowSuccessToast(false);
+                                }}
+                                className="flex-shrink-0 text-white hover:text-gray-200 transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 )}
+
             </main>
 
             <style>{`
@@ -279,6 +484,3 @@ const Bookings = () => {
 };
 
 export default Bookings;
-
-/* ───────────────────── Optional: scrollbar styling (global-friendly) ───────────────────── */
-/* If you don't already have this in globals.css, you can paste it there instead: */

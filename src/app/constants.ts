@@ -81,7 +81,6 @@ export const Cuisine = {
 } as const;
 export type Cuisine = typeof Cuisine[keyof typeof Cuisine];
 
-// Platform tags
 export const RestaurantPlatforms = {
     Resy: "resy",
     Resy_Concierge: "resy-concierge",
@@ -89,7 +88,6 @@ export const RestaurantPlatforms = {
 } as const;
 export type RestaurantPlatforms = typeof RestaurantPlatforms[keyof typeof RestaurantPlatforms];
 
-// Simple table sizes & weekdays
 export const TableSizes = [1, 2, 3, 4, 5, 6] as const;
 export type TableSize = (typeof TableSizes)[number];
 

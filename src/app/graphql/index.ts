@@ -1,31 +1,25 @@
 import { ApolloClient, InMemoryCache, createHttpLink, from, ApolloLink } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
-import { LocalStorageKeys } from "../constants";
-import { logout } from "../../keycloak";
+import { LocalStorageKeys} from "../constants.ts";
+import { logout } from "../../keycloak.ts";
+const base = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
+const uri  = base ? `${base}/adminGQL` : "/api/adminGQL";
 
 const httpLink = createHttpLink({
-    uri: "http://localhost:8000/adminGQL",
+    uri,
+    credentials: "include",
     fetchOptions: { method: "POST" },
-    headers: {
-        "content-type": "application/json",
-        "x-apollo-operation-name": "ClientOperation",
-        "apollo-require-preflight": "true",
-    },
 });
 
-// attach Bearer token
 const authLink = setContext((_, { headers }) => {
-    const token = localStorage.getItem(LocalStorageKeys.Token);
-    return {
-        headers: {
-            ...headers,
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-    };
+    const raw = localStorage.getItem(LocalStorageKeys.Token);
+    const token = raw && raw.trim() ? `Bearer ${raw.trim()}` : "";
+    const next = { ...headers };
+    if (token) next.Authorization = token;
+    return { headers: next };
 });
 
-// keep your existing helpers
 const csrfLink = new ApolloLink((operation, forward) => {
     operation.setContext(({ headers = {} }) => ({
         headers: {
@@ -38,27 +32,35 @@ const csrfLink = new ApolloLink((operation, forward) => {
     return forward(operation);
 });
 
-const sanitize = new ApolloLink((op, fwd) => {
-    const h = op.getContext().headers || {};
+const sanitizeLink = new ApolloLink((operation, forward) => {
+    const ctx = operation.getContext();
+    const h = ctx.headers || {};
     if (h.Authorization === "Bearer null" || h.Authorization === "Bearer undefined") {
         const { Authorization, ...rest } = h;
-        op.setContext({ headers: rest });
+        operation.setContext({ headers: rest });
     }
-    return fwd(op);
+    return forward(operation);
 });
 
-const errors = onError(({ graphQLErrors, networkError }) => {
-    if (graphQLErrors?.some((e: any) =>
-        e?.extensions?.code === "UNAUTHORIZED" || e?.extensions?.code === "UNAUTHENTICATED")) {
-        logout(); return;
+const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+    if (graphQLErrors?.length) {
+        console.error("[GQL]", operation.operationName || "(unnamed)", graphQLErrors);
+        const shouldLogout = graphQLErrors.some(
+            (e: any) => e?.extensions?.code === "UNAUTHENTICATED" || e?.extensions?.code === "UNAUTHORIZED"
+        );
+        if (shouldLogout) logout();
     }
-    const s = (networkError as any)?.statusCode
-        ?? (networkError as any)?.status
-        ?? (networkError as any)?.response?.status;
-    if (s === 401) logout();
+    if (networkError) {
+        console.error("[NET]", networkError);
+        const status =
+            (networkError as any)?.statusCode ??
+            (networkError as any)?.status ??
+            (networkError as any)?.response?.status;
+        if (status === 401) logout();
+    }
 });
 
 export const client = new ApolloClient({
-    link: from([errors, csrfLink, sanitize, authLink, httpLink]),
+    link: from([errorLink, csrfLink, sanitizeLink, authLink, httpLink]),
     cache: new InMemoryCache(),
 });

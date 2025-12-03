@@ -13,12 +13,25 @@ const AddManualBookingButton: React.FC<Props> = ({ onClick, disabled, size="md" 
         disabled={disabled}
         className={[
             "inline-flex items-center gap-2 rounded-full",
-            "bg-black text-white font-semibold shadow-sm",
-            "hover:bg-neutral-900 active:scale-[0.99]",
+            "text-white font-semibold shadow-sm",
+            "active:scale-[0.99]",
             "disabled:opacity-60 disabled:cursor-not-allowed",
-            "w-auto shrink-0 whitespace-nowrap",   // <-- key bits
+            "w-auto shrink-0 whitespace-nowrap",
             sizeClass[size],
         ].join(" ")}
+        style={{
+            backgroundColor: "#064126",
+        }}
+        onMouseEnter={(e) => {
+            if (!disabled) {
+                e.currentTarget.style.backgroundColor = "#052a1a";
+            }
+        }}
+        onMouseLeave={(e) => {
+            if (!disabled) {
+                e.currentTarget.style.backgroundColor = "#064126";
+            }
+        }}
     >
         <span className="text-xl leading-none">＋</span>
         <span>Add Manual Booking</span>

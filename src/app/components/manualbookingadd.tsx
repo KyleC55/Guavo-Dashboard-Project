@@ -16,7 +16,7 @@ const AddManualBookingButton: React.FC<Props> = ({ onClick, disabled, size="md" 
             "text-white font-semibold shadow-sm",
             "active:scale-[0.99]",
             "disabled:opacity-60 disabled:cursor-not-allowed",
-            "w-auto shrink-0 whitespace-nowrap",
+            "whitespace-nowrap",
             sizeClass[size],
         ].join(" ")}
         style={{

@@ -1,0 +1,14 @@
+import React from 'react';
+
+interface SeparatorProps {
+  className?: string;
+  orientation?: 'horizontal' | 'vertical';
+}
+
+export function Separator({ className = '', orientation = 'horizontal' }: SeparatorProps) {
+  if (orientation === 'vertical') {
+    return <div className={`h-full w-px bg-gray-200 ${className}`} />;
+  }
+  return <div className={`h-px w-full bg-gray-200 ${className}`} />;
+}
+

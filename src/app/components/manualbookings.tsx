@@ -603,6 +603,7 @@ export default function ManualBookingForm({
     const [bookingInProgress, setBookingInProgress] = useState(false);
     const [nameTouched, setNameTouched] = useState(false);
     const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
 
 
     useEffect(() => {
@@ -893,6 +894,7 @@ export default function ManualBookingForm({
     const submit: React.FormEventHandler<HTMLFormElement> = async (e) => {
         e.preventDefault();
         if (disabled) return;
+        setSubmitError(null);
         // Validate name is required before opening details modal
         // Check bookeeSearch (what user types) instead of name
         if (!bookeeSearch || !bookeeSearch.trim()) {
@@ -925,6 +927,7 @@ export default function ManualBookingForm({
             // Don't open modal, error will be shown in the form
             return;
         }
+        setSubmitError(null);
         if (args.date) setDate(args.date);
         if (args.time !== undefined) {
             setTime(args.time);
@@ -951,6 +954,7 @@ export default function ManualBookingForm({
         if (inFlightRef.current || bookingInProgress) return;
         inFlightRef.current = true;
         setBookingInProgress(true);
+        setSubmitError(null);
 
         const payload = buildPayload();
 
@@ -1006,6 +1010,8 @@ export default function ManualBookingForm({
                         stack: mutationError?.stack
                     });
                     const errorMsg = formatErrorMessage(mutationError?.graphQLErrors?.[0] || mutationError?.networkError || mutationError);
+                    setSubmitError(errorMsg);
+                    setConfirmOpen(false);
                     notify.error(errorMsg);
                     inFlightRef.current = false;
                     setBookingInProgress(false);
@@ -1044,6 +1050,8 @@ export default function ManualBookingForm({
                 if (errors?.length) {
                     console.error("Booking errors:", errors);
                     const errorMsg = formatErrorMessage(errors[0]);
+                    setSubmitError(errorMsg);
+                    setConfirmOpen(false);
                     notify.error(errorMsg);
                     inFlightRef.current = false;
                     setBookingInProgress(false);
@@ -1068,12 +1076,21 @@ export default function ManualBookingForm({
                     // Check if there's an error in the data structure
                     if (data && Object.keys(data).length > 0) {
                         console.error("Data exists but adminManualBookListedSlot is missing. Available keys:", Object.keys(data));
-                        notify.error("The booking request was received but the response format was unexpected. Please try again.");
+                        const message = "The booking request was received but the response format was unexpected. Please try again.";
+                        setSubmitError(message);
+                        setConfirmOpen(false);
+                        notify.error(message);
                     } else if (!data && !errors) {
                         // Network error or connection issue
-                        notify.error("Unable to connect to the server. Please check your internet connection and try again.");
+                        const message = "Unable to connect to the server. Please check your internet connection and try again.";
+                        setSubmitError(message);
+                        setConfirmOpen(false);
+                        notify.error(message);
                     } else {
-                        notify.error("We couldn't complete your booking. The reservation may not have been created. Please try again.");
+                        const message = "We couldn't complete your booking. The reservation may not have been created. Please try again.";
+                        setSubmitError(message);
+                        setConfirmOpen(false);
+                        notify.error(message);
                     }
                     
                     inFlightRef.current = false;
@@ -1155,6 +1172,8 @@ export default function ManualBookingForm({
                 } catch (mutationError: any) {
                     console.error("Create booking mutation error:", mutationError);
                     const errorMsg = formatErrorMessage(mutationError?.graphQLErrors?.[0] || mutationError?.networkError || mutationError);
+                    setSubmitError(errorMsg);
+                    setConfirmOpen(false);
                     notify.error(errorMsg);
                     inFlightRef.current = false;
                     setBookingInProgress(false);
@@ -1166,6 +1185,8 @@ export default function ManualBookingForm({
                 if (errors?.length) {
                     console.error("Create booking errors:", errors);
                     const errorMsg = formatErrorMessage(errors[0]);
+                    setSubmitError(errorMsg);
+                    setConfirmOpen(false);
                     notify.error(errorMsg);
                     inFlightRef.current = false;
                     setBookingInProgress(false);
@@ -1189,12 +1210,21 @@ export default function ManualBookingForm({
                     // Check if there's an error in the data structure
                     if (data && Object.keys(data).length > 0) {
                         console.error("Data exists but adminCreateBooking is missing. Available keys:", Object.keys(data));
-                        notify.error("The booking request was received but the response format was unexpected. Please try again.");
+                        const message = "The booking request was received but the response format was unexpected. Please try again.";
+                        setSubmitError(message);
+                        setConfirmOpen(false);
+                        notify.error(message);
                     } else if (!data && !errors) {
                         // Network error or connection issue
-                        notify.error("Unable to connect to the server. Please check your internet connection and try again.");
+                        const message = "Unable to connect to the server. Please check your internet connection and try again.";
+                        setSubmitError(message);
+                        setConfirmOpen(false);
+                        notify.error(message);
                     } else {
-                        notify.error("We couldn't complete your booking. The reservation may not have been created. Please try again.");
+                        const message = "We couldn't complete your booking. The reservation may not have been created. Please try again.";
+                        setSubmitError(message);
+                        setConfirmOpen(false);
+                        notify.error(message);
                     }
                     
                     inFlightRef.current = false;
@@ -1220,6 +1250,8 @@ export default function ManualBookingForm({
         } catch (e: any) {
             console.error("Booking exception:", e);
             const errorMsg = formatErrorMessage(e?.graphQLErrors?.[0] || e?.networkError || { message: e?.message || "An unexpected error occurred. Please try again." });
+            setSubmitError(errorMsg);
+            setConfirmOpen(false);
             notify.error(errorMsg);
         } finally {
             inFlightRef.current = false;
@@ -1568,6 +1600,11 @@ export default function ManualBookingForm({
                 onSubmit={submit}
                 className="space-y-6 max-h-[70vh] overflow-y-auto pr-2"
             >
+                {submitError && (
+                    <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {submitError}
+                    </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="relative">
                         <label className="block text-sm mb-1">

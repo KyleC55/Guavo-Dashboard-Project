@@ -4,6 +4,7 @@ import Booking from "./app/pages/booking.tsx";
 import Venues from "./app/pages/venues.tsx";
 import Inquiries from "./app/pages/inquiries.tsx";
 import Members from "./app/pages/members.tsx";
+import UserProfilePage from "./app/pages/user-profile.tsx";
 
 export default function App() {
     return (
@@ -14,6 +15,7 @@ export default function App() {
             <Route path="/inquiries" element={<Inquiries />} />
             <Route path="/venues" element={<Venues />} />
             <Route path="/members" element={<Members />} />
+            <Route path="/user/:uuid" element={<UserProfilePage />} />
         </Routes>
     );
 }

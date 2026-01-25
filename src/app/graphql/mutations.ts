@@ -69,3 +69,63 @@ export const UPDATE_RESERVATION_NOTE = gql`
         updateReservationNote(uuid: $uuid, note: $note)
     }
 `;
+
+export const SIGN_UP_CORPORATE = gql`
+    mutation SignUpCorporate($corporate: SignUpCorporateInput!) {
+        signUpCorporate(corporate: $corporate) {
+            checkoutUrl
+            checkoutSessionId
+        }
+    }
+`;
+
+export const VALIDATE_COUPON_CODE = gql`
+    mutation ValidateCouponCode($code: String!) {
+        validateCouponCode(code: $code) {
+            valid
+            code
+            discount
+            error
+        }
+    }
+`;
+
+export const PROCESS_CORPORATE_CHECKOUT = gql`
+    mutation ProcessCorporateCheckout($checkoutSessionId: ID!) {
+        processCorporateCheckout(checkoutSessionId: $checkoutSessionId) {
+            result
+            error
+        }
+    }
+`;
+
+export const UPDATE_MEMBER_INFORMATION = gql`
+    mutation UpdateMemberInformation($uuid: String!, $information: UpdateMemberInput) {
+        updateMemberInformation(uuid: $uuid, information: $information) {
+            uuid
+            firstName
+            lastName
+            preferredName
+            email
+            phone
+        }
+    }
+`;
+
+export const MOVE_MEMBER_TO_TEAM = gql`
+    mutation MoveMemberToTeam($memberUUID: String!, $teamUUID: String!) {
+        moveMemberToTeam(memberUUID: $memberUUID, teamUUID: $teamUUID)
+    }
+`;
+
+export const TOGGLE_MEMBER_ACTIVE = gql`
+    mutation ToggleMemberActive($uuid: String!, $active: Boolean!) {
+        toggleMemberActive(uuid: $uuid, active: $active)
+    }
+`;
+
+export const CHANGE_MEMBER_ROLE = gql`
+    mutation ChangeMemberRole($memberUuid: String!, $role: String!) {
+        changeMemberRole(memberUuid: $memberUuid, role: $role)
+    }
+`;

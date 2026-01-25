@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import Sidebar from "../components/sidebar";
 import Search from "../components/searchbar";
 import { ProfileCard } from "../components/profilecard";
-import { displayProfile } from "../data/profile";
+import { getDisplayProfile } from "../data/profile";
 import Modal from "../components/modal";
 import ManualBookingForm from "../components/manualbookings";
 import AddManualBookingButton from "../components/manualbookingadd";
@@ -283,7 +283,7 @@ const Bookings = () => {
                         <div className="flex-1 min-w-0">
                             <Search />
                         </div>
-                        <ProfileCard profile={displayProfile[0]} />
+                        <ProfileCard profile={getDisplayProfile()} />
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-3">

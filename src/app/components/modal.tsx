@@ -21,6 +21,19 @@ export default function Modal({
                                   size = 'md',
                               }: ModalProps) {
     const panelRef = useRef<HTMLDivElement>(null);
+    const sizeClass = (() => {
+        switch (size) {
+            case 'sm':
+                return 'w-[24rem] max-w-[90vw] min-h-0';
+            case 'lg':
+                return 'w-[56rem] max-w-[95vw] min-h-[24rem]';
+            case 'xl':
+                return 'w-[72rem] max-w-[98vw] min-h-[24rem]';
+            case 'md':
+            default:
+                return 'w-[42rem] max-w-[95vw] min-h-[24rem]';
+        }
+    })();
 
     useEffect(() => {
         if (!open) return;
@@ -42,41 +55,49 @@ export default function Modal({
 
     if (!open) return null;
 
-    const sizeClasses = {
-        sm: 'max-w-md',
-        md: 'max-w-lg',
-        lg: 'max-w-lg',
-        xl: 'max-w-lg', // Revert to original width, focus on height expansion
-    };
-
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50" aria-hidden />
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" aria-hidden onClick={onClose} />
             <div
                 ref={panelRef}
                 role="dialog"
                 aria-modal="true"
                 tabIndex={-1}
-                className={`relative z-10 w-full ${sizeClasses[size]} max-h-[95vh] rounded-xl bg-white p-6 shadow-xl outline-none flex flex-col`}
+                className={`relative z-10 ${sizeClass} max-h-[90vh] rounded-xl bg-white shadow-xl outline-none flex flex-col`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {title && (
-                    <div className="mb-4 text-xl font-semibold flex items-center justify-between flex-shrink-0">
+                    <div className="px-6 pt-6 pb-4 text-xl font-semibold flex items-center justify-between flex-shrink-0">
                         <span>{title}</span>
-                        {logo && (
-                            <div className="flex-shrink-0 ml-4">
-                                {logo}
-                            </div>
-                        )}
+                        <div className="flex items-center gap-3">
+                            {logo && (
+                                <div className="flex-shrink-0">
+                                    {logo}
+                                </div>
+                            )}
+                            {showCloseButton && (
+                                <button
+                                    onClick={onClose}
+                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                    aria-label="Close modal"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="flex-1 overflow-y-auto min-h-0 px-6">
+                    <div className="pr-4">
                     {children}
+                    </div>
                 </div>
 
                 {showCloseButton && (
-                    <div className="mt-6 flex justify-end">
+                    <div className="px-6 pt-4 pb-6 flex justify-end">
                         <button
                             type="button"
                             onClick={onClose}

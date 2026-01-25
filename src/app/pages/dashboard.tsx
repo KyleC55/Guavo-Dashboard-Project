@@ -8,7 +8,7 @@ import { SectionCard } from "../components/sectioncard.tsx";
 import { VenueCard } from "../components/venuecard.tsx";
 import { venuePerformanceMock } from "../data/venue.ts";
 import { ProfileCard } from "../components/profilecard.tsx";
-import { displayProfile } from "../data/profile.ts";
+import { getDisplayProfile } from "../data/profile.ts";
 import { Quickactionbox } from "../components/quickactionbox.tsx";
 import { MdOutlineDashboard } from "react-icons/md";
 import { FaRegClock } from "react-icons/fa";
@@ -31,7 +31,7 @@ const Dashboard = () => {
             <div className="flex-1 flex flex-col p-6">
                 <div className="flex gap-4">
                     <Search />
-                    <ProfileCard profile={displayProfile[0]} />
+                    <ProfileCard profile={getDisplayProfile()} />
                 </div>
                 <h1 className="text-black text-4xl font-bold mt-6 ml-2">Dashboard</h1>
                 <h2 className="text-gray-500 mt-2 ml-2 max-w-2xl">

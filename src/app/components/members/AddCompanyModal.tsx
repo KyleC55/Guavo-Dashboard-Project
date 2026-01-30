@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import Modal from "../modal";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { SIGN_UP_CORPORATE, VALIDATE_COUPON_CODE } from "../../graphql/mutations";
@@ -11,11 +11,15 @@ export function AddCompanyModal({
     open: boolean;
     onClose: () => void;
 }) {
+    const formStorageKey = "addCompanyFormState";
+    const isRestoringRef = useRef(false);
     const [companyName, setCompanyName] = useState("");
     const [ownerFirstName, setOwnerFirstName] = useState("");
     const [ownerLastName, setOwnerLastName] = useState("");
     const [email, setEmail] = useState("");
     const [phoneCountryCode, setPhoneCountryCode] = useState("+1");
+    const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+    const [countrySearch, setCountrySearch] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
     
     // Common country codes
@@ -85,6 +89,16 @@ export function AddCompanyModal({
     const [couponValid, setCouponValid] = useState<boolean | null>(null);
     const [couponDiscount, setCouponDiscount] = useState<string>("");
     const [couponError, setCouponError] = useState<string>("");
+
+    const filteredCountryCodes = useMemo(() => {
+        const q = countrySearch.trim().toLowerCase();
+        if (!q) return countryCodes;
+        return countryCodes.filter(
+            (cc) =>
+                cc.country.toLowerCase().includes(q) ||
+                cc.code.toLowerCase().includes(q)
+        );
+    }, [countrySearch]);
     const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
     const [addr1, setAddr1] = useState("");
     const [addr2, setAddr2] = useState("");
@@ -235,6 +249,103 @@ export function AddCompanyModal({
             return () => clearTimeout(timeoutId);
         }
     }, [open]);
+
+    // Restore saved form state on open
+    useEffect(() => {
+        if (!open) return;
+        const raw = localStorage.getItem(formStorageKey);
+        if (!raw) return;
+        try {
+            const saved = JSON.parse(raw);
+            isRestoringRef.current = true;
+            setCompanyName(saved.companyName ?? "");
+            setOwnerFirstName(saved.ownerFirstName ?? "");
+            setOwnerLastName(saved.ownerLastName ?? "");
+            setEmail(saved.email ?? "");
+            setPhoneCountryCode(saved.phoneCountryCode ?? "+1");
+            setPhoneNumber(saved.phoneNumber ?? "");
+            setSelectedPlan(saved.selectedPlan ?? "");
+            setCouponCode(saved.couponCode ?? "");
+            setCouponValid(saved.couponValid ?? null);
+            setCouponDiscount(saved.couponDiscount ?? "");
+            setCouponError(saved.couponError ?? "");
+            setAddr1(saved.addr1 ?? "");
+            setAddr2(saved.addr2 ?? "");
+            setCity(saved.city ?? "");
+            setState(saved.state ?? "");
+            setZip(saved.zip ?? "");
+            setSameAsBilling(Boolean(saved.sameAsBilling));
+            setStateSearch(saved.stateSearch ?? "");
+            setShowStateDropdown(false);
+            setNumLicenses(saved.numLicenses ?? "");
+            setStripePriceId(saved.stripePriceId ?? "");
+        } catch (error) {
+            console.warn("[ADD_COMPANY] Failed to restore form state:", error);
+        } finally {
+            isRestoringRef.current = false;
+        }
+    }, [open]);
+
+    // Keep plan metadata in sync when restoring selected plan
+    useEffect(() => {
+        if (!open || !selectedPlan || plans.length === 0) return;
+        if (stripePriceId && numLicenses) return;
+        const plan = plans.find((p: any) => p.priceId === selectedPlan);
+        if (plan) {
+            if (!stripePriceId) setStripePriceId(plan.priceId || "");
+            if (!numLicenses) setNumLicenses((plan.keys || 0).toString());
+        }
+    }, [open, plans, selectedPlan, stripePriceId, numLicenses]);
+
+    // Persist form state while modal is open
+    useEffect(() => {
+        if (!open || isRestoringRef.current) return;
+        const payload = {
+            companyName,
+            ownerFirstName,
+            ownerLastName,
+            email,
+            phoneCountryCode,
+            phoneNumber,
+            selectedPlan,
+            couponCode,
+            couponValid,
+            couponDiscount,
+            couponError,
+            addr1,
+            addr2,
+            city,
+            state,
+            zip,
+            sameAsBilling,
+            stateSearch,
+            numLicenses,
+            stripePriceId,
+        };
+        localStorage.setItem(formStorageKey, JSON.stringify(payload));
+    }, [
+        open,
+        companyName,
+        ownerFirstName,
+        ownerLastName,
+        email,
+        phoneCountryCode,
+        phoneNumber,
+        selectedPlan,
+        couponCode,
+        couponValid,
+        couponDiscount,
+        couponError,
+        addr1,
+        addr2,
+        city,
+        state,
+        zip,
+        sameAsBilling,
+        stateSearch,
+        numLicenses,
+        stripePriceId,
+    ]);
 
     // Enhanced debug logging
     useEffect(() => {
@@ -478,6 +589,8 @@ export function AddCompanyModal({
         setEmail("");
         setPhoneCountryCode("+1");
         setPhoneNumber("");
+        setShowCountryDropdown(false);
+        setCountrySearch("");
         setSelectedPlan("");
         setCouponCode("");
         setAutoGeneratedCoupon("");
@@ -496,6 +609,7 @@ export function AddCompanyModal({
         setStripePriceId("");
         setShowReview(false);
         setErrors({});
+        localStorage.removeItem(formStorageKey);
         onClose();
     };
 
@@ -620,6 +734,16 @@ export function AddCompanyModal({
                         >
                             Back
                         </button>
+                    {errors.submit && (
+                        <button
+                            type="button"
+                            onClick={handleConfirm}
+                            disabled={isSubmitting}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Retry Checkout
+                        </button>
+                    )}
                         <button
                             type="button"
                             onClick={handleConfirm}
@@ -764,23 +888,50 @@ export function AddCompanyModal({
                         </label>
                         <div className="flex gap-2 items-stretch">
                             {/* Country Code Dropdown */}
-                            <div className="relative w-20 flex-shrink-0">
-                                <select
-                                    value={phoneCountryCode}
-                                    onChange={(e) => setPhoneCountryCode(e.target.value)}
-                                    className="w-full h-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 appearance-none bg-white text-sm"
+                            <div className="relative w-28 flex-shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCountryDropdown((open) => !open)}
+                                    className="w-full h-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 bg-white text-sm text-left flex items-center justify-between"
                                 >
-                                    {countryCodes.map((cc) => (
-                                        <option key={cc.code} value={cc.code}>
-                                            {cc.flag} {cc.code}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
+                                    <span className="flex items-center gap-2 truncate">
+                                        <span>
+                                            {countryCodes.find((cc) => cc.code === phoneCountryCode)?.flag || "🌐"}
+                                        </span>
+                                        <span className="truncate">{phoneCountryCode}</span>
+                                    </span>
+                                    <span className="text-gray-500">▾</span>
+                                </button>
+                                {showCountryDropdown && (
+                                    <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-64 overflow-auto">
+                                        <div className="p-2 border-b border-gray-100">
+                                            <input
+                                                type="text"
+                                                value={countrySearch}
+                                                onChange={(e) => setCountrySearch(e.target.value)}
+                                                placeholder="Search country..."
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800"
+                                            />
+                                        </div>
+                                        {filteredCountryCodes.map((cc, idx) => (
+                                            <button
+                                                key={`${cc.country}-${cc.code}-${idx}`}
+                                                type="button"
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setPhoneCountryCode(cc.code);
+                                                    setShowCountryDropdown(false);
+                                                    setCountrySearch("");
+                                                }}
+                                                className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm"
+                                            >
+                                                <span>{cc.flag}</span>
+                                                <span className="flex-1 truncate">{cc.country}</span>
+                                                <span className="text-gray-600">{cc.code}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                             {/* Phone Number Input */}
                             <div className="flex-1">

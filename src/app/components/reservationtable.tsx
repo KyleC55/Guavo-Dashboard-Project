@@ -497,7 +497,18 @@ export default function ReservationsTable({
                                 </td>
 
                                 <td className="p-3">
-                                    <div className="font-medium">{bookeeName}</div>
+                                    {r.member?.uuid ? (
+                                        <a
+                                            href={`/user/${r.member.uuid}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="font-medium text-black hover:underline"
+                                        >
+                                            {bookeeName}
+                                        </a>
+                                    ) : (
+                                        <div className="font-medium">{bookeeName}</div>
+                                    )}
                                     {bookeeEmail && <div className="text-xs text-blue-700">{bookeeEmail}</div>}
                                 </td>
 

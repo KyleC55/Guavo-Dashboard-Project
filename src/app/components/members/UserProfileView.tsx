@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Separator } from '../ui/separator';
 import { EditUserModal } from './EditUserModal';
 import { DeactivateUserModal } from './DeactivateUserModal';
-import { SendEmailModal } from './SendEmailModal';
 import { ChangeRoleModal } from './ChangeRoleModal';
 import Modal from '../modal';
 import { GET_MEMBER_BY_UUID, GET_ALL_RESERVATIONS, GET_MEMBER_TEAMS, GET_MEMBER_CORPORATION_RELATIONSHIPS } from '../../graphql/queries';
@@ -56,7 +55,6 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [isChangeRoleModalOpen, setIsChangeRoleModalOpen] = useState(false);
-  const [isSendEmailModalOpen, setIsSendEmailModalOpen] = useState(false);
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   const [showProfilePictureConfirm, setShowProfilePictureConfirm] = useState(false);
@@ -233,6 +231,55 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
     return `${symbol}${dollars.toFixed(2)}`;
   };
 
+  const formatPhoneNumber = (phone?: string | null) => {
+    if (!phone) return null;
+    const normalized = phone.trim();
+    if (!normalized) return null;
+
+    const countryCodes = [
+      "+971", "+972", "+852", "+358", "+376", "+355", "+213", "+1", "+93", "+244",
+      "+54", "+55", "+52", "+91", "+86", "+81", "+82", "+65", "+64", "+61", "+49",
+      "+47", "+46", "+45", "+44", "+43", "+41", "+39", "+34", "+33", "+32", "+31",
+      "+27",
+    ];
+
+    const formatGeneric = (digits: string) => {
+      if (digits.length <= 3) return digits;
+      if (digits.length <= 7) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+      if (digits.length <= 10) {
+        return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+      }
+      return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10)}`;
+    };
+
+    if (normalized.startsWith("+")) {
+      const digits = normalized.replace(/\D/g, "");
+      const matchedCode = countryCodes
+        .sort((a, b) => b.length - a.length)
+        .find((code) => digits.startsWith(code.replace("+", "")));
+      const countryCode = matchedCode ? matchedCode.replace("+", "") : digits.slice(0, 3);
+      const restDigits = digits.slice(countryCode.length);
+      if (!restDigits) return `+${countryCode}`;
+      if (countryCode === '1' && restDigits.length >= 10) {
+        const main = restDigits.slice(0, 10);
+        const extra = restDigits.slice(10);
+        const formatted = `(${main.slice(0, 3)}) ${main.slice(3, 6)}-${main.slice(6, 10)}`;
+        return extra ? `+1 ${formatted} ${extra}` : `+1 ${formatted}`;
+      }
+      return `+${countryCode} ${formatGeneric(restDigits)}`;
+    }
+
+    const digits = normalized.replace(/\D/g, '');
+    if (!digits) return normalized;
+    if (digits.length === 11 && digits.startsWith('1')) {
+      return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
+    }
+    if (digits.length === 10) {
+      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+    }
+    return formatGeneric(digits);
+  };
+
   const getSubscriptionStatusDisplay = (status?: string) => {
     if (!status) return { label: 'N/A', className: 'bg-gray-100 text-gray-700' };
     const statusMap: Record<string, { label: string; className: string }> = {
@@ -386,16 +433,6 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
       navigator.clipboard.writeText(member.uuid);
       toastSuccess('UUID copied to clipboard', {
         description: member.uuid,
-      });
-    }
-  };
-
-  const handleSendEmail = () => {
-    if (member.email) {
-      setIsSendEmailModalOpen(true);
-    } else {
-      toast('Email address not available', {
-        description: 'This user does not have an email address configured.',
       });
     }
   };
@@ -618,7 +655,7 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -770,7 +807,9 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm text-gray-500">Phone Number</p>
-                      <p className="text-sm font-medium mt-1">{member.phone}</p>
+                      <p className="text-sm font-medium mt-1">
+                        {formatPhoneNumber(member.phone) || '—'}
+                      </p>
                     </div>
                   </div>
                 </>
@@ -1244,15 +1283,6 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
               <Button 
                 variant="outline" 
                 className="w-full justify-start gap-2"
-                onClick={handleSendEmail}
-                disabled={!member.email}
-              >
-                <Mail className="h-4 w-4" />
-                Send Email
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start gap-2"
                 onClick={handleChangeRole}
               >
                 <Shield className="h-4 w-4" />
@@ -1335,14 +1365,6 @@ export function UserProfileView({ userUuid, onBack }: UserProfileViewProps) {
           );
           refetch();
         }}
-      />
-
-      {/* Send Email Modal */}
-      <SendEmailModal
-        open={isSendEmailModalOpen}
-        onClose={() => setIsSendEmailModalOpen(false)}
-        recipientEmail={member.email || ''}
-        recipientName={displayName}
       />
 
       {/* Change Role Modal */}

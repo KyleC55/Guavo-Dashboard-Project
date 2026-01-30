@@ -25,7 +25,10 @@ export function HierarchyView({
     memberCompanyTeamMap,
     onEditMember,
     onMoveMember,
-    onDeactivateMember
+    onDeactivateMember,
+    onCompanyAction,
+    selectedCompanyUuids,
+    onToggleCompanySelect
 }: {
     corporations: Corporation[];
     expandedCompanies: Set<string>;
@@ -36,6 +39,9 @@ export function HierarchyView({
     onEditMember: (member: MemberRow) => void;
     onMoveMember: (member: MemberRow) => void;
     onDeactivateMember: (member: MemberRow) => void;
+    onCompanyAction: (company: Corporation, action: "deactivate" | "activate") => void;
+    selectedCompanyUuids: Set<string>;
+    onToggleCompanySelect: (company: Corporation) => void;
 }) {
     const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
 
@@ -71,17 +77,30 @@ export function HierarchyView({
     };
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-3">
             {corporations.map((company) => {
                 const isExpanded = expandedCompanies.has(company.uuid);
+                const companyStats = getCompanyStats(company);
                 return (
-                    <div key={company.uuid} className="border border-gray-200 rounded-lg">
+                    <div key={company.uuid} className="border border-gray-200 rounded-xl bg-white shadow-sm">
                         {/* Company Row */}
                         <div
-                            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
+                            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                             onClick={() => onToggleCompany(company.uuid)}
                         >
                             <div className="flex items-center gap-3 flex-1">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-gray-300"
+                                    checked={selectedCompanyUuids.has(company.uuid)}
+                                    disabled={companyStats.active === 0}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onChange={(event) => {
+                                        event.stopPropagation();
+                                        onToggleCompanySelect(company);
+                                    }}
+                                    aria-label={`Select ${company.name}`}
+                                />
                                 {isExpanded ? (
                                     <ChevronDownIcon className="w-5 h-5 text-gray-400" />
                                 ) : (
@@ -89,14 +108,41 @@ export function HierarchyView({
                                 )}
                                 <IoBusiness className="w-5 h-5 text-gray-600" />
                                 <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{company.name}</div>
+                                    <div className="font-semibold text-gray-900">{company.name}</div>
                                     <div className="text-sm text-gray-500">
                                         {company.teams.length} team{company.teams.length !== 1 ? "s" : ""} • {(() => {
-                                            const stats = getCompanyStats(company);
-                                            return `${stats.active} active • ${stats.inactive} inactive`;
+                                            return `${companyStats.active} active • ${companyStats.inactive} inactive`;
                                         })()}
                                     </div>
                                 </div>
+                            </div>
+                            <div
+                                className="flex items-center gap-2"
+                                onClick={(event) => event.stopPropagation()}
+                            >
+                                {companyStats.active > 0 ? (
+                                    <button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onCompanyAction(company, "deactivate");
+                                        }}
+                                        className="px-3 py-1.5 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+                                    >
+                                        Deactivate company
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onCompanyAction(company, "activate");
+                                        }}
+                                        className="px-3 py-1.5 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+                                    >
+                                        Activate company
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -114,7 +160,7 @@ export function HierarchyView({
                                         <div key={team.uuid} className="border-b border-gray-200 last:border-b-0">
                                             {/* Team Row */}
                                             <div
-                                                className="flex items-center justify-between p-3 pl-12 hover:bg-gray-100 cursor-pointer"
+                                                className="flex items-center justify-between p-3 pl-12 hover:bg-gray-100 cursor-pointer transition-colors"
                                                 onClick={() => handleToggleTeam(company.uuid, team.uuid)}
                                             >
                                                 <div className="flex items-center gap-3 flex-1">

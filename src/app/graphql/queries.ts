@@ -59,7 +59,7 @@ export const GET_ALL_RESERVATIONS = gql`
                     maxPartySize
                 }
                 corporate { uuid name }
-                member { firstName lastName email phone }
+                member { uuid firstName lastName email phone }
                 actor  { firstName lastName email }
             }
         }

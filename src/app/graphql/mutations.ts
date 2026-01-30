@@ -99,6 +99,21 @@ export const PROCESS_CORPORATE_CHECKOUT = gql`
     }
 `;
 
+export const SIGN_UP_INDIVIDUAL_ADMIN = gql`
+    mutation SignUpIndividualAdmin($input: AdminSignUpIndividualInput!) {
+        signUpIndividualAdmin(input: $input) {
+            checkoutUrl
+            checkoutSessionId
+        }
+    }
+`;
+
+export const CREATE_CORPORATE_MEMBER_ADMIN = gql`
+    mutation CreateCorporateMemberAdmin($input: AdminCreateCorporateMemberInput!) {
+        createCorporateMemberAdmin(input: $input)
+    }
+`;
+
 export const UPDATE_MEMBER_INFORMATION = gql`
     mutation UpdateMemberInformation($uuid: String!, $information: UpdateMemberInput) {
         updateMemberInformation(uuid: $uuid, information: $information) {

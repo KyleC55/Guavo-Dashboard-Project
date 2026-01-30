@@ -4,8 +4,9 @@ import { ProfileCard } from "../components/profilecard";
 import { getDisplayProfile } from "../data/profile";
 import { FiSidebar } from "react-icons/fi";
 import Modal from "../components/modal";
-import { useQuery } from "@apollo/client/react";
+import { useMutation, useQuery } from "@apollo/client/react";
 import { GET_ALL_MEMBERS, GET_ALL_RESERVATIONS, GET_MEMBER_STATS, GET_TEAM_MEMBER_RELATIONSHIPS, GET_ALL_CORPORATIONS, GET_MEMBER_CORPORATION_RELATIONSHIPS } from "../graphql/queries";
+import { TOGGLE_MEMBER_ACTIVE } from "../graphql/mutations";
 import { IoBusiness } from "react-icons/io5";
 import { HiOutlineUsers } from "react-icons/hi";
 import { HiOutlineUserGroup } from "react-icons/hi2";
@@ -20,7 +21,9 @@ import {
     EditUserModal,
     MoveUserModal,
     DeactivateUserModal,
+    DeactivateCompanyModal,
     AddCompanyModal,
+    AddMemberModal,
     HierarchyView,
     UsersView,
     TeamMemberRelationships,
@@ -33,13 +36,18 @@ const Members = () => {
     const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
     const [detailsModalOpen, setDetailsModalOpen] = useState(false);
     const [usersSearchQuery, setUsersSearchQuery] = useState("");
+    const [hierarchySearchQuery, setHierarchySearchQuery] = useState("");
     const [editUserModalOpen, setEditUserModalOpen] = useState(false);
     const [memberToEdit, setMemberToEdit] = useState<MemberRow | null>(null);
     const [moveUserModalOpen, setMoveUserModalOpen] = useState(false);
     const [memberToMove, setMemberToMove] = useState<MemberRow | null>(null);
     const [deactivateUserModalOpen, setDeactivateUserModalOpen] = useState(false);
     const [memberToDeactivate, setMemberToDeactivate] = useState<MemberRow | null>(null);
+    const [deactivateCompanyModalOpen, setDeactivateCompanyModalOpen] = useState(false);
+    const [companyToDeactivate, setCompanyToDeactivate] = useState<Corporation | null>(null);
+    const [companyAction, setCompanyAction] = useState<"deactivate" | "activate">("deactivate");
     const [addCompanyModalOpen, setAddCompanyModalOpen] = useState(false);
+    const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
     const [showEditSuccessToast, setShowEditSuccessToast] = useState(false);
     const [showMoveSuccessToast, setShowMoveSuccessToast] = useState(false);
     const [showRelationshipsModal, setShowRelationshipsModal] = useState(false);
@@ -48,6 +56,8 @@ const Members = () => {
     const [showCorporateSignupError, setShowCorporateSignupError] = useState(false);
     const [corporateSignupErrorMessage, setCorporateSignupErrorMessage] = useState<string>("");
     const [isRetryingCheckout, setIsRetryingCheckout] = useState(false);
+    const [selectedCompanyUuids, setSelectedCompanyUuids] = useState<Set<string>>(new Set());
+    const [bulkCompanyUpdating, setBulkCompanyUpdating] = useState(false);
 
     // Fetch reservations to extract companies and teams
     const { data: reservationsData, loading: reservationsLoading, error: reservationsError, refetch: refetchReservations } = useQuery(GET_ALL_RESERVATIONS, {
@@ -75,7 +85,7 @@ const Members = () => {
     }) as { data: any; refetch: () => Promise<any> };
 
     // Fetch all corporations (including those without teams)
-    const { data: corporationsData, refetch: refetchCorporations } = useQuery(GET_ALL_CORPORATIONS, {
+    const { data: corporationsData } = useQuery(GET_ALL_CORPORATIONS, {
         fetchPolicy: "network-only",
     }) as { data: any; refetch: () => Promise<any> };
 
@@ -83,6 +93,8 @@ const Members = () => {
     const { data: memberCorpRelationshipsData } = useQuery(GET_MEMBER_CORPORATION_RELATIONSHIPS, {
         fetchPolicy: "network-only",
     }) as { data: any };
+
+    const [toggleMemberActive] = useMutation(TOGGLE_MEMBER_ACTIVE);
 
     // Check for corporate signup success query parameter
     useEffect(() => {
@@ -185,7 +197,6 @@ const Members = () => {
         const allMembers = (membersData as any)?.members?.items ?? [];
         const relationships = (relationshipsData as any)?.teamMemberRelationships ?? [];
         const allCorporations = (corporationsData as any)?.allCorporations ?? [];
-        
         // Create a map: companyName -> company
         const corpMap = new Map<string, Corporation>();
         
@@ -358,6 +369,13 @@ const Members = () => {
         return Array.from(corpMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }, [relationshipsData, membersData, reservationsData, corporationsData, refreshKey]);
 
+    const filteredCorporations = useMemo(() => {
+        const q = hierarchySearchQuery.trim().toLowerCase();
+        if (!q) return corporations;
+        return corporations.filter((corp) => corp.name.toLowerCase().includes(q));
+    }, [corporations, hierarchySearchQuery]);
+
+
     // Calculate metrics
     const metrics = useMemo(() => {
         // Use backend stats if available, otherwise calculate from members array
@@ -425,8 +443,6 @@ const Members = () => {
         const combined = new Map<string, MemberTeamInfo>();
         const relationships = (relationshipsData as any)?.teamMemberRelationships ?? [];
         const allMembers = (membersData as any)?.members?.items ?? [];
-        const allCorporations = (corporationsData as any)?.allCorporations ?? [];
-        
         // Build map from database relationships (primary source)
         relationships.forEach((rel: any) => {
             const memberUuid = rel.memberUuid;
@@ -494,6 +510,24 @@ const Members = () => {
         return combined;
     }, [relationshipsData, membersData, reservationBasedMap, members, corporationsData, memberCorpRelationshipsData, refreshKey]);
 
+    const getCompanyMembers = (companyName: string) =>
+        members.filter((member: MemberRow) => {
+            const info = memberCompanyTeamMap.get(member.uuid);
+            return info?.company === companyName;
+        });
+
+    const activeCompanies = useMemo(
+        () =>
+            filteredCorporations.filter((company) =>
+                getCompanyMembers(company.name).some((member: MemberRow) => member.active)
+            ),
+        [filteredCorporations, memberCompanyTeamMap, members]
+    );
+
+    const allActiveCompaniesSelected =
+        activeCompanies.length > 0 &&
+        activeCompanies.every((company) => selectedCompanyUuids.has(company.uuid));
+
     const handleToggleCompany = (uuid: string) => {
         const newSet = new Set(expandedCompanies);
         if (newSet.has(uuid)) {
@@ -521,6 +555,78 @@ const Members = () => {
     const handleDeactivateMember = (member: MemberRow) => {
         setMemberToDeactivate(member);
         setDeactivateUserModalOpen(true);
+    };
+
+    const handleCompanyAction = (company: Corporation, action: "deactivate" | "activate") => {
+        setCompanyToDeactivate(company);
+        setCompanyAction(action);
+        setDeactivateCompanyModalOpen(true);
+    };
+
+    const toggleSelectAllActiveCompanies = () => {
+        setSelectedCompanyUuids((prev) => {
+            const next = new Set(prev);
+            if (allActiveCompaniesSelected) {
+                activeCompanies.forEach((company) => next.delete(company.uuid));
+            } else {
+                activeCompanies.forEach((company) => next.add(company.uuid));
+            }
+            return next;
+        });
+    };
+
+    const handleToggleCompanySelect = (company: Corporation) => {
+        setSelectedCompanyUuids((prev) => {
+            const next = new Set(prev);
+            if (next.has(company.uuid)) {
+                next.delete(company.uuid);
+            } else {
+                next.add(company.uuid);
+            }
+            return next;
+        });
+    };
+
+    const handleBulkDeactivateCompanies = async () => {
+        if (bulkCompanyUpdating || selectedCompanyUuids.size === 0) return;
+        const selectedCompanies = filteredCorporations.filter((corp) =>
+            selectedCompanyUuids.has(corp.uuid)
+        );
+        const activeMembers = selectedCompanies.flatMap((company) =>
+            getCompanyMembers(company.name).filter((member: MemberRow) => member.active)
+        );
+        if (activeMembers.length === 0) return;
+        const confirm = window.confirm(
+            `Deactivate ${activeMembers.length} account${activeMembers.length !== 1 ? "s" : ""} across ${selectedCompanies.length} compan${selectedCompanies.length !== 1 ? "ies" : "y"}?`
+        );
+        if (!confirm) return;
+
+        setBulkCompanyUpdating(true);
+        const results = await Promise.allSettled(
+            activeMembers.map((member) =>
+                toggleMemberActive({
+                    variables: {
+                        uuid: member.uuid,
+                        active: false,
+                    },
+                })
+            )
+        );
+        const failed = results.filter((result) => result.status === "rejected");
+        setBulkCompanyUpdating(false);
+
+        if (failed.length > 0) {
+            alert(
+                `Failed to deactivate ${failed.length} of ${activeMembers.length} accounts. Please retry.`
+            );
+        }
+
+        setSelectedCompanyUuids(new Set());
+        await Promise.all([
+            refetchMembers(),
+            refetchReservations(),
+            refetchMemberStats()
+        ]);
     };
 
     useEffect(() => {
@@ -635,6 +741,19 @@ const Members = () => {
                             >
                                 <span>+</span> Add Company
                             </button>
+                            <button
+                                onClick={() => setAddMemberModalOpen(true)}
+                                className="px-4 py-2 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                                style={{ backgroundColor: "#064126" }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = "#052a1a";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = "#064126";
+                                }}
+                            >
+                                <span>+</span> Add Member
+                            </button>
                         </div>
                     </div>
 
@@ -696,13 +815,41 @@ const Members = () => {
                     {viewMode === "hierarchy" ? (
                         <div>
                             <h2 className="text-xl font-semibold mb-4">Company Hierarchy</h2>
+                            <div className="mb-4">
+                                <input
+                                    type="text"
+                                    placeholder="Search companies..."
+                                    value={hierarchySearchQuery}
+                                    onChange={(e) => setHierarchySearchQuery(e.target.value)}
+                                    className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                                />
+                            </div>
+                            <div className="mb-4 flex flex-wrap items-center gap-3">
+                                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-gray-300"
+                                        checked={allActiveCompaniesSelected}
+                                        onChange={toggleSelectAllActiveCompanies}
+                                    />
+                                    Select all active companies ({activeCompanies.length})
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkDeactivateCompanies}
+                                    disabled={selectedCompanyUuids.size === 0 || bulkCompanyUpdating}
+                                    className="px-3 py-1.5 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-200 disabled:text-red-700 disabled:cursor-not-allowed"
+                                >
+                                    {bulkCompanyUpdating ? "Deactivating..." : "Deactivate selected companies"}
+                                </button>
+                            </div>
                             {(reservationsLoading || membersLoading) ? (
                                 <div className="text-center py-12 text-gray-500">Loading hierarchy...</div>
-                            ) : corporations.length === 0 ? (
+                            ) : filteredCorporations.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">No companies found</div>
                             ) : (
                                 <HierarchyView
-                                    corporations={corporations}
+                                    corporations={filteredCorporations}
                                     expandedCompanies={expandedCompanies}
                                     onToggleCompany={handleToggleCompany}
                                     onToggleTeam={handleToggleTeam}
@@ -711,6 +858,9 @@ const Members = () => {
                                     onEditMember={handleEditMember}
                                     onMoveMember={handleMoveMember}
                                     onDeactivateMember={handleDeactivateMember}
+                                    onCompanyAction={handleCompanyAction}
+                                    selectedCompanyUuids={selectedCompanyUuids}
+                                    onToggleCompanySelect={handleToggleCompanySelect}
                                 />
                             )}
                         </div>
@@ -727,6 +877,13 @@ const Members = () => {
                                     onEditMember={handleEditMember}
                                     onMoveMember={handleMoveMember}
                                     onDeactivateMember={handleDeactivateMember}
+                                    onBulkDeactivateComplete={async () => {
+                                        await Promise.all([
+                                            refetchMembers(),
+                                            refetchReservations(),
+                                            refetchMemberStats()
+                                        ]);
+                                    }}
                                 />
                             )}
                         </div>
@@ -965,10 +1122,49 @@ const Members = () => {
                     }}
                 />
 
+                {/* Deactivate Company Modal */}
+                <DeactivateCompanyModal
+                    company={companyToDeactivate}
+                    members={members}
+                    memberCompanyTeamMap={memberCompanyTeamMap}
+                    open={deactivateCompanyModalOpen}
+                    onClose={() => {
+                        setDeactivateCompanyModalOpen(false);
+                        setCompanyToDeactivate(null);
+                    }}
+                    action={companyAction}
+                    onSuccess={async () => {
+                        await Promise.all([
+                            refetchMembers(),
+                            refetchReservations(),
+                            refetchMemberStats()
+                        ]);
+                    }}
+                />
+
                 {/* Add Company Modal */}
                 <AddCompanyModal
                     open={addCompanyModalOpen}
                     onClose={() => setAddCompanyModalOpen(false)}
+                />
+
+                {/* Add Member Modal */}
+                <AddMemberModal
+                    open={addMemberModalOpen}
+                    onClose={() => setAddMemberModalOpen(false)}
+                    corporations={corporations}
+                    onSuccess={async () => {
+                        try {
+                            await Promise.all([
+                                refetchMembers(),
+                                refetchReservations(),
+                                refetchMemberStats(),
+                                refetchRelationships && refetchRelationships(),
+                            ]);
+                        } finally {
+                            setAddMemberModalOpen(false);
+                        }
+                    }}
                 />
             </main>
         </div>

@@ -275,6 +275,15 @@ export function MemberCard({
                         {status}
                     </span>
 
+                    <button
+                        type="button"
+                        onClick={onEdit}
+                        className="px-3 py-1.5 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 flex items-center gap-1.5"
+                    >
+                        <EditIcon className="h-3.5 w-3.5" />
+                        Edit Profile
+                    </button>
+
                     {/* More Actions Dropdown */}
                     <div className="relative">
                         <button

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { BookingRow } from "../../../types/types";
-// @ts-ignore - local workspace lacks luxon type declarations
 import { DateTime } from "luxon";
 import AvailableSlots from "./AvailableSlots";
 import { useMembersForBooking } from "../hooks/getmembers";
@@ -12,11 +11,9 @@ import {
 import { GET_MEMBER_TEAMS } from "../graphql/queries";
 import { HiHeart, HiCake, HiBriefcase, HiAcademicCap, HiEmojiHappy } from "react-icons/hi";
 
-// Helper function to make error messages more user-friendly
 const formatErrorMessage = (error: any): string => {
     const message = error?.message || error?.extensions?.message || error?.extensions?.code || "An error occurred";
     
-    // Map technical error messages to user-friendly ones
     const errorMappings: Record<string, string> = {
         "Member not found": "The selected member could not be found. Please try selecting again or enter a different name.",
         "Team not found": "The selected team could not be found. Please try selecting again.",
@@ -544,14 +541,12 @@ export default function ManualBookingForm({
         [members, bookeeUuid]
     );
 
-    // Fetch member teams and corporation when bookee is selected
     const { data: memberTeamsData, loading: teamsLoading, error: teamsError } = useQuery(GET_MEMBER_TEAMS, {
         variables: { memberUuid: bookeeUuid },
         skip: !bookeeUuid,
         fetchPolicy: "network-only",
     });
 
-    // Log errors for debugging
     useEffect(() => {
         if (teamsError) {
             console.error("Error fetching member teams:", teamsError);
@@ -574,7 +569,7 @@ export default function ManualBookingForm({
 
     const [open, setOpen] = useState<"guests" | "date" | "time" | null>(null);
     const [guests, setGuests] = useState(cfg.min);
-    // Calculate today and tomorrow dynamically in NY timezone
+
     const todayNY = useMemo(() => DateTime.now().setZone("America/New_York").toISODate()!, []);
     const tomorrowNY = useMemo(() => DateTime.now().setZone("America/New_York").plus({ days: 1 }).toISODate()!, []);
     const [date, setDate] = useState<string>(todayNY);
@@ -626,14 +621,12 @@ export default function ManualBookingForm({
         }
         const display = displayNameFor(selectedBookee);
         setName(display);
-        // Only set bookeeSearch if it's empty - this allows the user to edit the search field freely
-        // We use a ref check to avoid infinite loops
+
         if (!bookeeSearch || bookeeSearch.trim() === "") {
         setBookeeSearch(display);
         }
         
-        // Pre-populate allergies and restrictions from member's database record
-        // Handle both array format and string format (some DBs store as comma-separated strings)
+
         let memberAllergies: string[] = [];
         let memberRestrictions: string[] = [];
         
@@ -662,7 +655,6 @@ export default function ManualBookingForm({
             fullBookee: selectedBookee
         });
         
-        // Combine allergies and restrictions, and map to form options
         const availableOptions = [
             "All Dairy", "Eggs", "Fish", "Milk", "Peanuts", "Sesame", "Shellfish", "Soy",
             "Nuts", "Wheat", "Diabetic", "Gluten Free", "Halal", "Kosher", "Paleo",

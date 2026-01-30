@@ -3,6 +3,7 @@ import Modal from "../modal";
 import { MemberRow } from "./types";
 import { useMutation } from "@apollo/client/react";
 import { UPDATE_MEMBER_INFORMATION } from "../../graphql/mutations";
+import { GET_ALL_MEMBERS, GET_MEMBER_DETAILS } from "../../graphql/queries";
 import { HiOutlineUser, HiOutlineMail, HiOutlinePhone, HiOutlineLocationMarker } from "react-icons/hi";
 
 // Target icon component
@@ -29,7 +30,12 @@ export function EditUserModal({
     const [lastName, setLastName] = useState("");
     const [preferredName, setPreferredName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
-    const [address, setAddress] = useState("");
+    const [addressLine1, setAddressLine1] = useState("");
+    const [addressLine2, setAddressLine2] = useState("");
+    const [city, setCity] = useState("");
+    const [state, setState] = useState("");
+    const [zip, setZip] = useState("");
+    const [country, setCountry] = useState("");
     const [restrictionsInput, setRestrictionsInput] = useState("");
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [pendingUpdateData, setPendingUpdateData] = useState<any>(null);
@@ -40,12 +46,20 @@ export function EditUserModal({
         lastName: "",
         preferredName: "",
         phoneNumber: "",
-        address: "",
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        state: "",
+        zip: "",
+        country: "",
         restrictions: "",
     });
 
     const [updateMember, { loading: updating }] = useMutation(UPDATE_MEMBER_INFORMATION, {
-        refetchQueries: ["GetAllMembers", "GetMemberDetails"],
+        refetchQueries: [
+            { query: GET_ALL_MEMBERS, variables: { limit: 1000, offset: 0 } },
+            { query: GET_MEMBER_DETAILS, variables: { uuid: member?.uuid } },
+        ],
         onCompleted: () => {
             setShowConfirmation(false);
             setPendingUpdateData(null);
@@ -57,7 +71,7 @@ export function EditUserModal({
         },
         onError: (error) => {
             console.error("Error updating member:", error);
-            alert("Failed to update member. Please try again.");
+            alert(error.message || "Failed to update member. Please try again.");
             setShowConfirmation(false);
         }
     });
@@ -69,7 +83,12 @@ export function EditUserModal({
             const lastNameValue = member.lastName || "";
             const preferredNameValue = member.preferredName || "";
             const phoneValue = member.phone || "";
-            const addressValue = ""; // Address would need to be fetched from member details if needed
+            const addressLine1Value = member.address?.addressLine1 || "";
+            const addressLine2Value = member.address?.addressLine2 || "";
+            const cityValue = member.address?.city || "";
+            const stateValue = member.address?.state || "";
+            const zipValue = member.address?.zipcode || "";
+            const countryValue = member.address?.country || "";
             const restrictionsValue = Array.isArray(member.restrictions)
                 ? member.restrictions.join(", ")
                 : "";
@@ -78,7 +97,12 @@ export function EditUserModal({
             setLastName(lastNameValue);
             setPreferredName(preferredNameValue);
             setPhoneNumber(phoneValue);
-            setAddress(addressValue);
+            setAddressLine1(addressLine1Value);
+            setAddressLine2(addressLine2Value);
+            setCity(cityValue);
+            setState(stateValue);
+            setZip(zipValue);
+            setCountry(countryValue);
             setRestrictionsInput(restrictionsValue);
             
             // Store original values for comparison
@@ -87,7 +111,12 @@ export function EditUserModal({
                 lastName: lastNameValue,
                 preferredName: preferredNameValue,
                 phoneNumber: phoneValue,
-                address: addressValue,
+                addressLine1: addressLine1Value,
+                addressLine2: addressLine2Value,
+                city: cityValue,
+                state: stateValue,
+                zip: zipValue,
+                country: countryValue,
                 restrictions: restrictionsValue,
             });
         }
@@ -100,41 +129,34 @@ export function EditUserModal({
             lastName.trim() !== originalValues.lastName.trim() ||
             preferredName.trim() !== originalValues.preferredName.trim() ||
             phoneNumber.trim() !== originalValues.phoneNumber.trim() ||
-            address.trim() !== originalValues.address.trim() ||
+            addressLine1.trim() !== originalValues.addressLine1.trim() ||
+            addressLine2.trim() !== originalValues.addressLine2.trim() ||
+            city.trim() !== originalValues.city.trim() ||
+            state.trim() !== originalValues.state.trim() ||
+            zip.trim() !== originalValues.zip.trim() ||
+            country.trim() !== originalValues.country.trim() ||
             restrictionsInput.trim() !== originalValues.restrictions.trim()
         );
     };
 
     const prepareUpdateData = () => {
-        // Parse address if provided - try to parse comma-separated values
-        // Expected format: "123 Main St, Suite 100, City, State, ZIP" (5 parts)
-        // or "123 Main St, City, State, ZIP" (4 parts)
         let addressInput = undefined;
-        if (address.trim()) {
-            const addressParts = address.split(",").map((s) => s.trim());
-            if (addressParts.length >= 5) {
-                // 5 parts: addressLine1, addressLine2, city, state, zip
-                addressInput = {
-                    addressLine1: addressParts[0] || "",
-                    addressLine2: addressParts[1] || "",
-                    city: addressParts[2] || "",
-                    state: addressParts[3] || "",
-                    zip: addressParts[4] || "",
-                };
-            } else if (addressParts.length === 4) {
-                // 4 parts: addressLine1, city, state, zip (no addressLine2)
-                addressInput = {
-                    addressLine1: addressParts[0] || "",
-                    city: addressParts[1] || "",
-                    state: addressParts[2] || "",
-                    zip: addressParts[3] || "",
-                };
-            } else {
-                // If format doesn't match, just use the whole string as addressLine1
-                addressInput = {
-                    addressLine1: address.trim(),
-                };
-            }
+        if (
+            addressLine1.trim() ||
+            addressLine2.trim() ||
+            city.trim() ||
+            state.trim() ||
+            zip.trim() ||
+            country.trim()
+        ) {
+            addressInput = {
+                addressLine1: addressLine1.trim() || "",
+                addressLine2: addressLine2.trim() || "",
+                city: city.trim() || "",
+                state: state.trim() || "",
+                zip: zip.trim() || "",
+                country: country.trim() || "",
+            };
         }
 
         const updateData: any = {
@@ -202,6 +224,45 @@ export function EditUserModal({
         setPendingUpdateData(null);
     };
 
+    const formatPhoneNumber = (phone?: string | null) => {
+        if (!phone) return "—";
+        const normalized = phone.trim();
+        if (!normalized) return "—";
+
+        const formatGeneric = (digits: string) => {
+            if (digits.length <= 3) return digits;
+            if (digits.length <= 7) return `${digits.slice(0, 3)} ${digits.slice(3)}`;
+            if (digits.length <= 10) {
+                return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+            }
+            return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6, 10)} ${digits.slice(10)}`;
+        };
+
+        const countryMatch = normalized.match(/^\+(\d{1,3})\s*(.*)$/);
+        if (countryMatch) {
+            const countryCode = countryMatch[1];
+            const restDigits = countryMatch[2].replace(/\D/g, "");
+            if (!restDigits) return `+${countryCode}`;
+            if (countryCode === "1" && restDigits.length >= 10) {
+                const main = restDigits.slice(0, 10);
+                const extra = restDigits.slice(10);
+                const formatted = `(${main.slice(0, 3)}) ${main.slice(3, 6)}-${main.slice(6, 10)}`;
+                return extra ? `+1 ${formatted} ${extra}` : `+1 ${formatted}`;
+            }
+            return `+${countryCode} ${formatGeneric(restDigits)}`;
+        }
+
+        const digits = normalized.replace(/\D/g, "");
+        if (!digits) return normalized;
+        if (digits.length === 11 && digits.startsWith("1")) {
+            return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`;
+        }
+        if (digits.length === 10) {
+            return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+        }
+        return formatGeneric(digits);
+    };
+
     const formatAddress = (addressInput: any): string => {
         if (!addressInput) return "—";
         const parts = [];
@@ -210,13 +271,24 @@ export function EditUserModal({
         if (addressInput.city) parts.push(addressInput.city);
         if (addressInput.state) parts.push(addressInput.state);
         if (addressInput.zip) parts.push(addressInput.zip);
-        return parts.length > 0 ? parts.join(", ") : address || "—";
+        if (addressInput.zipcode) parts.push(addressInput.zipcode);
+        if (addressInput.country) parts.push(addressInput.country);
+        return parts.length > 0 ? parts.join(", ") : "—";
     };
 
     if (!member) return null;
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
-    const displayAddress = pendingUpdateData?.address ? formatAddress(pendingUpdateData.address) : (address || "—");
+    const displayAddress = pendingUpdateData?.address
+        ? formatAddress(pendingUpdateData.address)
+        : formatAddress({
+            addressLine1,
+            addressLine2,
+            city,
+            state,
+            zip,
+            country,
+        });
     const displayRestrictions = pendingUpdateData?.restrictions
         ? (pendingUpdateData.restrictions.length > 0 ? pendingUpdateData.restrictions.join(", ") : "N/A")
         : (restrictionsInput.trim() || "N/A");
@@ -270,7 +342,9 @@ export function EditUserModal({
                                 <HiOutlinePhone className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm text-gray-500">Phone Number</div>
-                                    <div className="text-base font-semibold text-gray-900">{phoneNumber.trim()}</div>
+                                    <div className="text-base font-semibold text-gray-900">
+                                        {formatPhoneNumber(phoneNumber)}
+                                    </div>
                                 </div>
                             </div>
 
@@ -397,17 +471,58 @@ export function EditUserModal({
                     />
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
                         Address (Optional)
                     </label>
-                    <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="123 Main Street, Suite 100, City, State, ZIP"
-                    />
+                    <div className="space-y-2">
+                        <input
+                            type="text"
+                            value={addressLine1}
+                            onChange={(e) => setAddressLine1(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Address Line 1"
+                        />
+                        <input
+                            type="text"
+                            value={addressLine2}
+                            onChange={(e) => setAddressLine2(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Address Line 2"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                            <input
+                                type="text"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="City"
+                            />
+                            <input
+                                type="text"
+                                value={state}
+                                onChange={(e) => setState(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="State"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <input
+                                type="text"
+                                value={zip}
+                                onChange={(e) => setZip(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="ZIP Code"
+                            />
+                            <input
+                                type="text"
+                                value={country}
+                                onChange={(e) => setCountry(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Country"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div>

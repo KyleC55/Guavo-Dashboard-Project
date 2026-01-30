@@ -22,9 +22,6 @@ const AVAILABLE_ROLES = [
   { value: 'ADMIN', label: 'Admin', description: 'Full system access and management capabilities', group: '/CORPORATE/ADMIN', groupEnum: 'ADMIN' },
   { value: 'EMPLOYEE', label: 'Employee', description: 'Standard access to team resources', group: '/CORPORATE/EMPLOYEE', groupEnum: 'EMPLOYEE' },
   { value: 'OWNER', label: 'Owner', description: 'Full system access and management capabilities', group: '/CORPORATE/OWNER', groupEnum: 'OWNER' },
-  { value: 'CORE', label: 'Core', description: 'Individual core membership', group: '/INDIVIDUAL/CORE', groupEnum: 'CORE' },
-  { value: 'PREMIUM', label: 'Premium', description: 'Individual premium membership', group: '/INDIVIDUAL/PREMIUM', groupEnum: 'PREMIUM' },
-  { value: 'SELECT', label: 'Select', description: 'Individual select membership', group: '/INDIVIDUAL/SELECT', groupEnum: 'SELECT' },
 ];
 
 export function ChangeRoleModal({

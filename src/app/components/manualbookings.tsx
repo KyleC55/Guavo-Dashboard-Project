@@ -787,7 +787,7 @@ export default function ManualBookingForm({
             return;
         }
 
-        if (!memberTeamsData?.membersTeams?.teams || memberTeamsData.membersTeams.teams.length === 0) {
+        if (!memberTeamsData?.membersTeams?.teams || memberTeamsData.image.png.teams.length === 0) {
             // No teams found, clear the fields
             console.log("No teams found for member:", bookeeUuid);
             setTeam("");

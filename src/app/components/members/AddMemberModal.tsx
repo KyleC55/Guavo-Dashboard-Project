@@ -9,9 +9,10 @@ type AddMemberModalProps = {
     onClose: () => void;
     corporations: Corporation[];
     onSuccess?: () => void;
+    onError?: (message: string) => void;
 };
 
-export function AddMemberModal({ open, onClose, corporations, onSuccess }: AddMemberModalProps) {
+export function AddMemberModal({ open, onClose, corporations, onSuccess, onError }: AddMemberModalProps) {
     const [companyUuid, setCompanyUuid] = useState("");
     const [companyName, setCompanyName] = useState("");
     const [teamUuid, setTeamUuid] = useState("");
@@ -194,14 +195,17 @@ export function AddMemberModal({ open, onClose, corporations, onSuccess }: AddMe
                 setErrors({
                     submit: "Failed to create member. Please try again.",
                 });
+                onError?.("Failed to create member. Please try again.");
                 return;
             }
             onSuccess?.();
             handleClose();
         } catch (error: any) {
+            const message = error.message || "Failed to create member.";
             setErrors({
-                submit: error.message || "Failed to create member.",
+                submit: message,
             });
+            onError?.(message);
         } finally {
             setIsSubmitting(false);
         }

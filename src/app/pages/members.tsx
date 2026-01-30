@@ -50,6 +50,9 @@ const Members = () => {
     const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
     const [showEditSuccessToast, setShowEditSuccessToast] = useState(false);
     const [showMoveSuccessToast, setShowMoveSuccessToast] = useState(false);
+    const [showAddMemberSuccessToast, setShowAddMemberSuccessToast] = useState(false);
+    const [showAddMemberErrorToast, setShowAddMemberErrorToast] = useState(false);
+    const [addMemberErrorMessage, setAddMemberErrorMessage] = useState("");
     const [showRelationshipsModal, setShowRelationshipsModal] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0); // Force refresh trigger
     const [showCorporateSignupSuccess, setShowCorporateSignupSuccess] = useState(false);
@@ -980,6 +983,60 @@ const Members = () => {
                     </div>
                 )}
 
+                {/* Add Member Success Toast */}
+                {showAddMemberSuccessToast && (
+                    <div className="fixed bottom-6 right-6 z-[10000] animate-in slide-in-from-bottom-5">
+                        <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+                            <div className="flex-shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-semibold">Member Created</div>
+                                <div className="text-sm text-green-100">The new member has been created successfully.</div>
+                            </div>
+                            <button
+                                onClick={() => setShowAddMemberSuccessToast(false)}
+                                className="flex-shrink-0 text-white hover:text-gray-200 transition-colors"
+                                aria-label="Close notification"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Add Member Failed Toast */}
+                {showAddMemberErrorToast && (
+                    <div className="fixed bottom-6 right-6 z-[10000] animate-in slide-in-from-bottom-5">
+                        <div className="bg-red-600 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+                            <div className="flex-shrink-0">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-semibold">Member Creation Failed</div>
+                                <div className="text-sm text-red-100">
+                                    {addMemberErrorMessage || "Please try again."}
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowAddMemberErrorToast(false)}
+                                className="flex-shrink-0 text-white hover:text-gray-200 transition-colors"
+                                aria-label="Close notification"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Corporate Signup Success Toast */}
                 {showCorporateSignupSuccess && (
                     <div className="fixed bottom-6 right-6 z-[10000] animate-in slide-in-from-bottom-5">
@@ -1161,9 +1218,19 @@ const Members = () => {
                                 refetchMemberStats(),
                                 refetchRelationships && refetchRelationships(),
                             ]);
+                            setShowAddMemberSuccessToast(true);
+                            setTimeout(() => {
+                                setShowAddMemberSuccessToast(false);
+                                window.location.reload();
+                            }, 1500);
                         } finally {
                             setAddMemberModalOpen(false);
                         }
+                    }}
+                    onError={(message) => {
+                        setAddMemberErrorMessage(message);
+                        setShowAddMemberErrorToast(true);
+                        setTimeout(() => setShowAddMemberErrorToast(false), 5000);
                     }}
                 />
             </main>

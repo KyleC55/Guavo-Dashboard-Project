@@ -105,7 +105,6 @@ export function AddCompanyModal({
     const [city, setCity] = useState("");
     const [state, setState] = useState("");
     const [zip, setZip] = useState("");
-    const [sameAsBilling, setSameAsBilling] = useState(false);
     const [stateSearch, setStateSearch] = useState("");
     const [showStateDropdown, setShowStateDropdown] = useState(false);
     const [showReview, setShowReview] = useState(false);
@@ -274,7 +273,6 @@ export function AddCompanyModal({
             setCity(saved.city ?? "");
             setState(saved.state ?? "");
             setZip(saved.zip ?? "");
-            setSameAsBilling(Boolean(saved.sameAsBilling));
             setStateSearch(saved.stateSearch ?? "");
             setShowStateDropdown(false);
             setNumLicenses(saved.numLicenses ?? "");
@@ -317,7 +315,6 @@ export function AddCompanyModal({
             city,
             state,
             zip,
-            sameAsBilling,
             stateSearch,
             numLicenses,
             stripePriceId,
@@ -341,7 +338,6 @@ export function AddCompanyModal({
         city,
         state,
         zip,
-        sameAsBilling,
         stateSearch,
         numLicenses,
         stripePriceId,
@@ -481,7 +477,6 @@ export function AddCompanyModal({
 
         try {
             // Build address object
-            // If "same as billing" is checked, only use address when it is complete
             const trimmedAddr1 = addr1.trim();
             const trimmedCity = city.trim();
             const trimmedState = state.trim();
@@ -490,17 +485,7 @@ export function AddCompanyModal({
             const hasCompleteAddress = Boolean(trimmedAddr1 && trimmedCity && trimmedState && trimmedZip);
 
             let address = undefined;
-            const sameAsBillingValue = sameAsBilling && hasCompleteAddress;
-
-            if (sameAsBillingValue) {
-                    address = {
-                    addr1: trimmedAddr1,
-                    addr2: addr2.trim() || undefined,
-                    city: trimmedCity,
-                    state: trimmedState,
-                    zip: trimmedZip,
-                };
-            } else if (!sameAsBilling && hasAnyAddress) {
+            if (hasAnyAddress) {
                 // Only send address if required fields are present
                 if (hasCompleteAddress) {
                     address = {
@@ -532,11 +517,10 @@ export function AddCompanyModal({
                         priceId: stripePriceId.trim(),
                         address: address,
                 couponCode: couponCode.trim() && couponValid ? couponCode.trim() : undefined,
-                sameAsBilling: sameAsBillingValue, // Only true when a complete address is provided
+                sameAsBilling: false,
             };
             
             console.log('[FRONTEND] Sending corporate signup data:', {
-                sameAsBilling: corporateInput.sameAsBilling,
                 hasAddress: !!corporateInput.address,
                 address: corporateInput.address,
             });
@@ -602,7 +586,6 @@ export function AddCompanyModal({
         setCity("");
         setState("");
         setZip("");
-        setSameAsBilling(false);
         setStateSearch("");
         setShowStateDropdown(false);
         setNumLicenses("");
@@ -713,12 +696,6 @@ export function AddCompanyModal({
                                             </p>
                                         </div>
                                     )}
-                                    {sameAsBilling && (
-                                        <div>
-                                            <span className="text-sm font-medium text-gray-600">Billing Address:</span>
-                                            <p className="text-sm text-green-600 font-medium mt-1">Same as company address</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
@@ -726,6 +703,14 @@ export function AddCompanyModal({
 
                     {/* Action Buttons */}
                     <div className="flex justify-end gap-3 pt-4">
+                        <button
+                            type="button"
+                            onClick={handleClose}
+                            disabled={isSubmitting}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Clear
+                        </button>
                     <button
                         type="button"
                             onClick={handleBackToForm}
@@ -1152,24 +1137,7 @@ export function AddCompanyModal({
                 <div>
                         <div className="flex items-center justify-between mb-1.5">
                             <label className="block text-sm font-medium text-gray-700">
-                        Company Address (Optional)
-                            </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={sameAsBilling}
-                                    onChange={(e) => {
-                                        setSameAsBilling(e.target.checked);
-                                        // Clear address error if it exists
-                                        if (errors.address) {
-                                            const newErrors = { ...errors };
-                                            delete newErrors.address;
-                                            setErrors(newErrors);
-                                        }
-                                    }}
-                                    className="w-4 h-4 text-black border-gray-300 rounded focus:ring-2 focus:ring-gray-800 focus:border-gray-800 cursor-pointer"
-                                />
-                                <span className="text-sm text-gray-600">Same as billing address</span>
+                                Company Address (Optional)
                             </label>
                         </div>
                         <div className="space-y-3">
@@ -1359,11 +1327,6 @@ export function AddCompanyModal({
                                 />
                             </div>
                         </div>
-                        {sameAsBilling && (
-                            <p className="mt-2 text-sm text-gray-500 italic">
-                                This address will be used to pre-fill the billing address in Stripe checkout
-                            </p>
-                        )}
                         {errors.address && (
                             <p className="mt-1.5 text-sm text-red-500">{errors.address}</p>
                         )}

@@ -62,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                 </li>
                 <li
                     className="flex items-center gap-2 px-2 py-2 rounded cursor-pointer hover:bg-gray-200"
-                    onClick={() => navigate("/inquires")}
+                    onClick={() => navigate("/inquiries")}
                 >
                     <CiChat1 size={23} />
                     Inquiries

@@ -1,7 +1,7 @@
+import InquiryList from "../components/inquiries/InquiryList";
+
 const Inquiries = () => {
-    return (
-        <h1> inquiries</h1>
-    );
+    return <InquiryList />;
 };
 
 

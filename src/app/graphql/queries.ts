@@ -138,6 +138,31 @@ export const GET_RESERVATION_BY_UUID = gql`
     }
 `;
 
+export const GET_INQUIRIES = gql`
+  query GetInquiries($filter: InquiryFilterInput) {
+    searchInquiries(filter: $filter) {
+      count
+      page
+      size
+      items {
+        uuid
+        title
+        city
+        country
+        timezone
+        teamName
+        state
+        publicKey
+        requestedBy { uuid }
+        approval { uuid }
+        bookingUuid
+        estimatedBudget { amount currency }
+        schedules { uuid }
+      }
+    }
+  }
+`;
+
 export const LIST_RESTAURANTS = gql`
     query ListRestaurants($limit: Int = 100, $offset: Int = 0) {
         restaurants(options: { limit: $limit, offset: $offset }) {

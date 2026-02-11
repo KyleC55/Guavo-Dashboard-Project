@@ -4,7 +4,15 @@ import { onError } from "@apollo/client/link/error";
 import { LocalStorageKeys} from "../constants.ts";
 import { logout } from "../../keycloak.ts";
 const base = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
-const uri  = base ? `${base}/adminGQL` : "/api/adminGQL";
+const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+const uri = isLocalhost
+    ? "/api/adminGQL"
+    : base
+    ? `${base}/adminGQL`
+    : "/api/adminGQL";
 
 const httpLink = createHttpLink({
     uri,
